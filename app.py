@@ -322,7 +322,7 @@ def screen_practice():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
     t = st.session_state.practice
-    title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
+    title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     # >>> התיקון: להגדיר on_timeout אחרי שהורדנו את מסך ה-intro <<<
