@@ -314,7 +314,6 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
-        st.session_state.page = "practice_intro"
         st.rerun()
 
 def screen_practice():
