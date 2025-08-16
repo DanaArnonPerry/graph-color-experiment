@@ -8,28 +8,21 @@ import streamlit as st
 from PIL import Image
 from io import BytesIO
 
-# === Google Sheets ===
+# Google Sheets
 import gspread
-from google.oauth2.service_account import Credentials
+from google.oauth2 import service_account
 
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-
-# ========= Paths & IDs =========
 DATA_PATH = "data/colors_in_charts.csv"
-GSHEET_ID_FALLBACK = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
+GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"   # מזהה הגיליון שלך
 GSHEET_WORKSHEET_NAME = "Results"
 
 # ========= (Optional) Brand assets =========
-LOGO_CANDIDATES = [
-    "images/Logo.png", "images/logo.png", "Logo.png", "Logo", "images/Logo29.10.24_B.png"
-]
-USER_PHOTO_CANDIDATES = [
-    "images/DanaSherlok.png", "images/DanaSherlok.jpg",
-    "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
-]
-WEBSITE_URL = ""  # קישור אתר במסך הסיום (אם תרצי)
+LOGO_CANDIDATES = ["images/Logo.png", "images/logo.png", "images/Logo29.10.24_B.png", "Logo.png", "Logo"]
+USER_PHOTO_CANDIDATES = ["images/DanaSherlok.png", "images/DanaSherlok.jpg", "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"]
+WEBSITE_URL = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
 
 def _first_existing(paths):
     for p in paths:
@@ -44,7 +37,7 @@ USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
 st.markdown("""
 <style>
-html, body, [class*="css"]  { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
+html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 </style>
 """, unsafe_allow_html=True)
@@ -66,9 +59,11 @@ def init_state():
 
 init_state()
 
-# ========= Admin PIN (לגישה לכלי מנהל בלבד) =========
+# ========= Admin PIN =========
 def is_admin():
     with st.sidebar:
+        if LOGO_PATH:
+            st.image(LOGO_PATH, use_container_width=True)
         st.markdown("**🔐 אזור מנהל**")
         if not st.session_state.is_admin:
             pin = st.text_input("הכנסי PIN:", type="password")
@@ -80,12 +75,12 @@ def is_admin():
                     else:
                         st.error("PIN שגוי")
                 except Exception:
-                    st.info("לא מוגדר PIN במערכת (admin.pin ב-secrets).")
+                    st.info("לא מוגדר PIN (admin.pin) ב-Secrets.")
         else:
             st.success("מנהל מחובר ✅")
     return st.session_state.is_admin
 
-# ========= Data Loading =========
+# ========= Data =========
 @st.cache_data
 def load_data():
     try:
@@ -96,12 +91,39 @@ def load_data():
     df = df.astype({c: str for c in df.columns})
     return df
 
-# ========= Utilities =========
+# ========= Google Sheets helpers =========
+@st.cache_resource
+def _gs_client():
+    # משתמשים ב-[service_account] מתוך Secrets כפי שהדבקת
+    creds = service_account.Credentials.from_service_account_info(
+        dict(st.secrets["service_account"]),
+        scopes=["https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"]
+    )
+    return gspread.authorize(creds)
+
+def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
+    gc = _gs_client()
+    sh = gc.open_by_key(sheet_id)
+    try:
+        ws = sh.worksheet(worksheet_name)
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title=worksheet_name,
+                              rows=str(max(len(df)+10, 1000)),
+                              cols=str(len(df.columns)+5))
+    # כתיבת כותרות אם הגיליון ריק
+    if len(ws.get_all_values()) == 0:
+        ws.append_row(list(df.columns))
+    # הוספת שורות
+    ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
+
+# ========= Utils =========
 def load_image(path: str):
     if not path:
         return None
-    if path in st.session_state.image_cache:
-        return st.session_state.image_cache[path]
+    cache = st.session_state.image_cache
+    if path in cache:
+        return cache[path]
     try:
         if path.startswith(("http://", "https://")):
             r = requests.get(path, timeout=10)
@@ -109,7 +131,7 @@ def load_image(path: str):
             img = Image.open(BytesIO(r.content)).convert("RGBA")
         else:
             img = Image.open(path).convert("RGBA")
-        st.session_state.image_cache[path] = img
+        cache[path] = img
         return img
     except Exception:
         return None
@@ -122,41 +144,35 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
     result, last_v = [], None
     for _ in range(n_needed):
         candidates = [v for v in vs if groups[v]]
-        if not candidates: break
+        if not candidates:
+            break
         non_same = [v for v in candidates if v != last_v] or candidates
         v = random.choice(non_same)
         result.append(groups[v].pop(0))
         last_v = v
     return result
 
-# ===== Google Sheets helpers =====
-def _get_gsheet_client():
-    if "gcp_service_account" not in st.secrets:
-        raise RuntimeError("חסר gcp_service_account ב-secrets.")
-    sa_info = dict(st.secrets["gcp_service_account"])
-    scopes = ["https://www.googleapis.com/auth/spreadsheets",
-              "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(sa_info, scopes=scopes)
-    return gspread.authorize(creds)
+def _render_graph_block(title_html, question_text, image_file):
+    st.markdown(title_html, unsafe_allow_html=True)
+    st.markdown(f"### {question_text}")
+    img = load_image(image_file)
+    if img is not None:
+        st.image(img, use_container_width=True)
 
-def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
-    gc = _get_gsheet_client()
-    sh = gc.open_by_key(sheet_id)
-    try:
-        ws = sh.worksheet(worksheet_name)
-    except gspread.WorksheetNotFound:
-        ws = sh.add_worksheet(title=worksheet_name,
-                              rows=str(max(len(df)+10, 1000)),
-                              cols=str(len(df.columns)+5))
-    if len(ws.get_all_values()) == 0:
-        ws.append_row(list(df.columns))
-    ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
+def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
+    elapsed = time.time() - (st.session_state.t_start or time.time())
+    remain = max(0, timeout_sec - int(elapsed))
+    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
+    if elapsed >= timeout_sec:
+        on_timeout(); st.stop()
+    cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])  # רווחי צד + 5 כפתורים
+    for idx, lab in enumerate(["A","B","C","D","E"], start=1):
+        if cols[idx].button(lab, use_container_width=True):
+            on_press(lab); st.stop()
+    time.sleep(1); st.rerun()
 
 # ========= Screens =========
 def screen_welcome():
-    if LOGO_PATH:
-        st.sidebar.image(LOGO_PATH, use_container_width=True)
-
     st.title("ניסוי גרפים")
     st.write("""
     **הנחיות:**  
@@ -173,10 +189,14 @@ def screen_welcome():
     if st.button("המשך"):
         if not st.session_state.participant_id:
             st.warning("נא להזין מזהה נבדק."); return
+
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
-        practice_item = df.iloc[0].to_dict()          # תרגול = שורה ראשונה
-        pool_df = df.iloc[1:1+N_TRIALS].copy()        # 40 ניסויים
+        # תרגול = תמיד השורה הראשונה
+        practice_item = df.iloc[0].to_dict()
+
+        # ניסויים = 40 השורות הבאות
+        pool_df = df.iloc[1:1+N_TRIALS].copy()
         trials = build_alternating_trials(pool_df, N_TRIALS)
 
         st.session_state.df = df
@@ -187,25 +207,6 @@ def screen_welcome():
         st.session_state.results = []
         st.session_state.page = "practice"
         st.rerun()
-
-def _render_graph_block(title_html, question_text, image_file):
-    st.markdown(title_html, unsafe_allow_html=True)
-    st.markdown(f"### {question_text}")
-    img = load_image(image_file)
-    if img is not None:
-        st.image(img, use_container_width=True)
-
-def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
-    elapsed = time.time() - (st.session_state.t_start or time.time())
-    remain = max(0, timeout_sec - int(elapsed))
-    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
-    if elapsed >= timeout_sec:
-        on_timeout(); st.stop()
-    cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
-    for idx, lab in enumerate(["A","B","C","D","E"], start=1):
-        if cols[idx].button(lab, use_container_width=True):
-            on_press(lab); st.stop()
-    time.sleep(1); st.rerun()
 
 def screen_practice():
     if st.session_state.t_start is None:
@@ -224,6 +225,7 @@ def screen_trial():
         st.session_state.t_start = time.time()
     i = st.session_state.i
     t = st.session_state.trials[i]
+    # כותרת קטנה
     title_html = f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
@@ -259,16 +261,14 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # --- שמירה ל-Google Sheets בלבד ---
+    # שמירה ל-Google Sheets בלבד
     try:
-        sheet_id = st.secrets.get("gsheets", {}).get("sheet_id", "") if hasattr(st, "secrets") else ""
-        if not sheet_id: sheet_id = GSHEET_ID_FALLBACK
-        append_dataframe_to_gsheet(df, sheet_id, worksheet_name=GSHEET_WORKSHEET_NAME)
+        append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
         st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
     except Exception as e:
         st.info(f"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}")
 
-    # --- אזור מנהל בלבד: הורדת CSV וקישור ל-Sheet ---
+    # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
         st.download_button(
             "הורדת תוצאות (CSV)",
@@ -278,7 +278,7 @@ def screen_end():
         )
         st.link_button(
             "פתח/י את Google Sheet",
-            f"https://docs.google.com/spreadsheets/d/{GSHEET_ID_FALLBACK}/edit",
+            f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
             type="primary"
         )
 
