@@ -258,7 +258,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
 
     # כפתורי התשובה (עם ריווח בצדדים)
     cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
-    for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
+    for idx, lab in enumerate(["E", "D", "C", "B", "A"], start=1):
         if cols[idx].button(lab, use_container_width=True):
             on_press(lab)
             st.stop()
