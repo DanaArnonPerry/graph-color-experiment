@@ -10,7 +10,7 @@ from io import BytesIO
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-RESPONSE_KEYS = ["A", "B", "C", "D", "E"]  # סדר לוגי
+RESPONSE_KEYS = ["E", "B", "C", "D", "E"]  # סדר לוגי
 
 # ========= Required Columns (exactly as in Colors in charts.csv) =========
 REQUIRED_COLS = [
