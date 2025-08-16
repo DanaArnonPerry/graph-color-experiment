@@ -32,11 +32,13 @@ USER_PHOTO_CANDIDATES = [
 ]
 WEBSITE_URL = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
 
+
 def _first_existing(paths):
     for p in paths:
         if os.path.exists(p):
             return p
     return None
+
 
 LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
@@ -272,25 +274,23 @@ def screen_welcome():
 
 במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר בגרף.
 
-חשוב לענות מהר ככל שניתן, לאחר 30 שניות, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
+חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
 
+**איך עונים?**  
+לוחצים על האות המתאימה מתחת לגרף **A / B / C / D / E**.
 
-**איך עונים?**
-לוחצים על האות המתאימה מתחת לגרף A / B / C / D / E.
+לפני תחילת הניסוי, תוצג **שאלת תרגול אחת** (לא נשמרת בתוצאות).
 
-לפני תחילת הניסוי ,תוצג **שאלת תרגול אחת**.
-
-כדי להתחיל יש ללחוץ על  **המשך לתרגול**.
+כדי להתחיל – לחצו על **המשך לתרגול**.
 """
     )
 
-    # מזהה נבדק אוטומטי ורץ (S00001, S00002, ...)
+    # יצירת מזהה נבדק אוטומטי ורץ (מאחורי הקלעים; לא מוצג)
     if not st.session_state.participant_id:
         try:
             seq = get_next_participant_seq(GSHEET_ID)
             st.session_state.participant_id = f"S{seq:05d}"
         except Exception:
-            # נפלנו על הרשאות/אופליין – נשתמש בזמן כמזהה חד־פעמי
             st.session_state.participant_id = f"S{int(time.time())}"
 
     if not os.path.exists(DATA_PATH):
@@ -305,7 +305,7 @@ def screen_welcome():
         practice_item = df.iloc[0].to_dict()
 
         # ניסויים = 40 השורות הבאות (עם ניסיון לאזן קבוצות V)
-        pool_df = df.iloc[1 : 1 + N_TRIALS].copy()
+        pool_df = df.iloc[1: 1 + N_TRIALS].copy()
         trials = build_alternating_trials(pool_df, N_TRIALS)
 
         st.session_state.df = df
@@ -314,6 +314,8 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
+        # >>> התיקון הקריטי: המעבר לדף התרגול <<<
+        st.session_state.page = "practice"
         st.rerun()
 
 def screen_practice():
@@ -323,7 +325,12 @@ def screen_practice():
     title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
-  
+    # >>> התיקון: להגדיר on_timeout אחרי שהורדנו את מסך ה-intro <<<
+    def on_timeout():
+        st.session_state.t_start = None
+        st.session_state.page = "trial"
+        st.rerun()
+
     def on_press(_):
         st.session_state.t_start = None
         st.session_state.page = "trial"
