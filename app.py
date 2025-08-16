@@ -281,7 +281,7 @@ def screen_welcome():
     if not st.session_state.participant_id:
         try:
             seq = get_next_participant_seq(GSHEET_ID)
-            st.session_state.participant_id = f"${seq:05d}\"
+            st.session_state.participant_id = f"${seq:05d}"
         except Exception:
             st.session_state.participant_id = f"${seq:05d}"
     st.info(f\"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}\")
