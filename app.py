@@ -99,10 +99,15 @@ init_state()
 # ========= Data Loading =========
 @st.cache_data
 def load_data():
+    # הנחה: הקובץ תמיד תקין. בכל זאת – מנקים שורות ריקות ומתייחסים לכל הערכים כמחרוזות.
     try:
-        return pd.read_csv(DATA_PATH, encoding="utf-8")
+        df = pd.read_csv(DATA_PATH, encoding="utf-8")
     except Exception:
-        return pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+        df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+    df = df.dropna(how="all")            # מתעלמים משורות ריקות אם יש
+    df = df.fillna("")                    # אין NaN
+    df = df.astype({c: str for c in df.columns})
+    return df
 
 # ========= Utilities =========
 def load_image(path: str):
@@ -123,16 +128,13 @@ def load_image(path: str):
         return None
 
 def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
+    # דו״ח אינפורמטיבי למנהל בלבד – ללא חסימות/שגיאות
     rows = []
-    # נבדוק את שורת התרגול + 40 הניסויים
     for idx, row in df.head(N_TRIALS + 1).iterrows():
-        issues = []
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
         valid_ans = ans in {"A","B","C","D","E"}
-        if not valid_ans:
-            issues.append("QCorrectAnswer not in A–E")
-
         img = str(row.get("ImageFileName","")).strip()
+
         image_ok = True
         if img:
             if img.startswith(("http://","https://")):
@@ -145,9 +147,13 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
                 image_ok = os.path.exists(img)
         else:
             image_ok = False
-            issues.append("ImageFileName empty")
 
-        if not image_ok and "ImageFileName empty" not in issues:
+        issues = []
+        if not valid_ans:
+            issues.append("QCorrectAnswer not in A–E")
+        if not img:
+            issues.append("ImageFileName empty")
+        elif not image_ok:
             issues.append("Image not found / URL error")
 
         rows.append({
@@ -191,11 +197,12 @@ def build_alternating_trials_strict(pool_df: pd.DataFrame, n_needed: int, admin_
         result.append(groups[chosen_v].pop(0))
         last_v = chosen_v
 
+    # רק אינפורמציה למנהל – לא מציגים למשתתף
     if admin_mode:
         if len(result) < n_needed:
-            st.warning(f"נבחרו {len(result)} פריטים בלבד מתוך {n_needed}. בדקי שיש 41 שורות (1 תרגול + 40 ניסויים).")
+            st.info(f"נבנו {len(result)} פריטים מתוך {n_needed}. בדקי שהקובץ כולל 1+40 שורות נתונים.")
         if relaxed:
-            st.warning("לא ניתן היה לשמור על מעבר בין קבוצות V בכל השלבים (חוסר איזון בין קבוצות).")
+            st.info("ייתכן רצף של אותה קבוצת V פעמיים, עקב חוסר איזון בנתונים.")
 
     return result
 
@@ -212,44 +219,25 @@ def screen_welcome():
     if not os.path.exists(DATA_PATH):
         st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
         st.stop()
+
     try:
         df = load_data()
     except Exception as e:
         st.error(f"שגיאה בקריאת הקובץ: {e}")
         st.stop()
 
-    # כלי מנהל בלבד
+    # כלי מנהל בלבד – אינפורמטיבי, ללא חסימות
     if ADMIN_MODE:
-        st.success("הקובץ נטען בהצלחה!")
+        st.success("הקובץ נטען.")
         with st.expander("תצוגה מקדימה (אופציונלי)"):
-            if st.checkbox("הצג 5 שורות ראשונות", value=False):
-                st.dataframe(df.head(), use_container_width=True, hide_index=True)
+            st.dataframe(df.head(), use_container_width=True, hide_index=True)
+        if st.button("דו״ח Preflight (אינפורמטיבי)"):
+            rep = preflight_check(df)
+            with st.expander("דו״ח Preflight"):
+                st.dataframe(rep, use_container_width=True, hide_index=True)
 
-        if st.button("בדיקת תקינות (Preflight)"):
-            missing = [c for c in REQUIRED_COLS if c not in df.columns]
-            if missing:
-                st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
-            elif len(df) < (N_TRIALS + 1):
-                st.error(f"הקובץ צריך לכלול לפחות {N_TRIALS+1} שורות (1 תרגול + {N_TRIALS} ניסויים).")
-            else:
-                rep = preflight_check(df)
-                bad = rep[(~rep["ValidAnswer"]) | (~rep["ImageExists"])]
-                st.success("בדיקת תקינות הושלמה.")
-                with st.expander("דו״ח Preflight"):
-                    st.dataframe(rep, use_container_width=True, hide_index=True)
-                if len(bad) > 0:
-                    st.warning("נמצאו בעיות בחלק מהשורות הראשונות. מומלץ לתקן לפני הרצה.")
-
-    # כפתור המשך (לכולם) — יכין תרגול וניסוי
+    # כפתור המשך (לכולם) — יכין תרגול וניסוי (ללא בדיקות/אזהרות)
     if st.button("המשך"):
-        missing = [c for c in REQUIRED_COLS if c not in df.columns]
-        if missing:
-            st.error("חסרות עמודות בקובץ: " + ", ".join(missing)); return
-        if len(df) < (N_TRIALS + 1):
-            st.error(f"הקובץ צריך לכלול לפחות {N_TRIALS+1} שורות (1 תרגול + {N_TRIALS} ניסויים)."); return
-
-        df = df.fillna("").astype({c: str for c in df.columns})
-
         # תרגול = תמיד השורה הראשונה
         practice_item = df.iloc[0].to_dict()
 
@@ -258,8 +246,6 @@ def screen_welcome():
 
         # בניית 40 ניסויים באקראי עם ניסיון לאי-רציפות V
         trials = build_alternating_trials_strict(pool_df, N_TRIALS, admin_mode=ADMIN_MODE)
-        if len(trials) < N_TRIALS:
-            st.error(f"לא ניתן היה להרכיב {N_TRIALS} ניסויים מהקובץ."); return
 
         st.session_state.df = df
         st.session_state.practice = practice_item
@@ -277,7 +263,9 @@ def _render_graph_block(title_html, question_text, image_file):
 
     img = load_image(image_file)
     if img is None and image_file:
-        st.warning(f"לא ניתן לטעון תמונה: {image_file}")
+        # לא עוצרים את המשתתף – רק מידע
+        if ADMIN_MODE:
+            st.info(f"לא ניתן לטעון תמונה: {image_file}")
     if img is not None:
         st.image(img, use_container_width=True)
 
@@ -309,13 +297,11 @@ def screen_practice():
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def on_timeout():
-        # בתרגול לא שומרים תוצאה
         st.session_state.t_start = None
         st.session_state.page = "trial"
         st.rerun()
 
     def on_press(key):
-        # בתרגול לא שומרים תוצאה
         st.session_state.t_start = None
         st.session_state.page = "trial"
         st.rerun()
@@ -371,7 +357,7 @@ def screen_end():
     cols = st.columns([1,1,1])
     with cols[1]:
         if USER_PHOTO_PATH:
-            st.image(USER_PHOTO_PATH, width=120)  # בלי use_column_width (דפריקייטד)
+            st.image(USER_PHOTO_PATH, width=120)
         if WEBSITE_URL:
             st.markdown(
                 f"<div style='text-align:center; margin-top:8px;'>"
