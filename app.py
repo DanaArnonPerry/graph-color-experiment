@@ -23,13 +23,24 @@ REQUIRED_COLS = [
 DATA_PATH = "data/colors_in_charts.csv"
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
+st.set_page_config(page_title="ניסוי גרפים – גרסה פשוטה", page_icon="📊", layout="centered")
 st.markdown("""
 <style>
 html, body, [class*="css"]  { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 </style>
 """, unsafe_allow_html=True)
+
+# ========= Admin Mode (Sidebar + URL) =========
+# מצד ימין (סיידבר) נוסיף Toggle, ונוסיף תמיכה גם בפרמטר URL ?admin=1
+try:
+    ADMIN_FROM_URL = str(st.query_params.get("admin", "0")).lower() in ("1", "true", "yes")
+except Exception:
+    ADMIN_FROM_URL = False
+
+st.sidebar.header("⚙️ הגדרות")
+is_admin_toggle = st.sidebar.checkbox("Admin Mode", value=ADMIN_FROM_URL, help="הצגת תוצאות בסיום הניסוי")
+ADMIN_MODE = ADMIN_FROM_URL or is_admin_toggle
 
 # ========= Session State =========
 def init_state():
@@ -134,11 +145,8 @@ def screen_welcome():
     יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
     """)
 
-    # Sidebar: Debug
-    st.sidebar.header("⚙️ הגדרות")
-    st.session_state["DEBUG"] = st.sidebar.checkbox("Debug Mode", value=False)
-    if st.session_state["DEBUG"]:
-        st.sidebar.caption("לוג יופיע בסיום ובמהלך הריצה.")
+    # Toggle Debug (למפתח/ת בלבד)
+    st.session_state["DEBUG"] = st.sidebar.checkbox("Debug Mode", value=st.session_state.get("DEBUG", False))
 
     # Load CSV from disk
     if not os.path.exists(DATA_PATH):
@@ -151,10 +159,10 @@ def screen_welcome():
         st.error(f"שגיאה בקריאת הקובץ: {e}")
         st.stop()
 
-    # הודעת הצלחה בלבד (ללא טבלה כבררת מחדל)
+    # הודעה בלבד (ללא טבלה כברירת מחדל)
     st.success("הקובץ נטען בהצלחה!")
 
-    # תצוגה מקדימה אופציונלית (למפתחים/בדיקה)
+    # תצוגה מקדימה אופציונלית
     with st.expander("תצוגה מקדימה (אופציונלי)"):
         show_preview = st.checkbox("הצג 5 שורות ראשונות", value=False)
         if show_preview:
@@ -205,8 +213,8 @@ def screen_welcome():
             st.session_state.page = "trial"
             st.rerun()
 
-
 def screen_trial():
+    # התחלת טיימר לניסוי
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
 
@@ -216,16 +224,11 @@ def screen_trial():
         log_debug(f"Start trials. Total={len(st.session_state.trials)}")
     log_debug(f"Start trial index={i+1} ID={t['ID']} Image={t['ImageFileName']}")
 
-    st.write(f"ניסיון {i+1} מתוך {len(st.session_state.trials)}")
-    with st.expander("פרטי הסטימולוס (לא חובה להפתח):"):
-        st.write(f"ChartNumber: {t['ChartNumber']}")
-        st.write(f"ConditionFull: {t['ConditionFull']}")
-        st.write(f"Color / Condition: {t['Color']} / {t['Condition']}")
-        st.write(f"ערכי A–E: {t['A']}, {t['B']}, {t['C']}, {t['D']}, {t['E']}")
-        st.write(f"LowowOrHhigh: {t['LowowOrHhigh']}")
+    # כותרת – ללא expander
+    st.subheader(f"גרף מספר {i+1}")
+    st.markdown(f"### {t['QuestionText']}")
 
-    st.subheader(t["QuestionText"])
-
+    # תמונה
     img = load_image(t["ImageFileName"])
     if img is None and t["ImageFileName"]:
         st.warning(f"לא ניתן לטעון תמונה: {t['ImageFileName']}")
@@ -233,6 +236,7 @@ def screen_trial():
     if img is not None:
         st.image(img, use_container_width=True)
 
+    # טיימר
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, TRIAL_TIMEOUT_SEC - int(elapsed))
     st.write(f"⏳ זמן שנותר: **{remain}** שניות")
@@ -241,19 +245,15 @@ def screen_trial():
         finish_trial(resp_key=None, rt_sec=TRIAL_TIMEOUT_SEC, correct=0)
         st.stop()
 
+    # כפתורי תשובה בלבד — A הכי שמאלי
     cols = st.columns(5)
-    for idx, key in enumerate(RESPONSE_KEYS):
-        if cols[idx].button(key, use_container_width=True):
-            handle_response(key)
+    keys_layout = ["A", "B", "C", "D", "E"]  # סדר משמאל לימין; אם אצלך מתהפך, החליפי ל-["E","D","C","B","A"]
+    for idx, label in enumerate(keys_layout):
+        if cols[idx].button(label, use_container_width=True):
+            handle_response(label)
             st.stop()
 
-    with st.form(key="type_answer", clear_on_submit=True):
-        typed = st.text_input("או הקלד/י A–E ולחץ/י Enter:", max_chars=1)
-        submit = st.form_submit_button("שליחה")
-        if submit and typed.strip():
-            handle_response(typed.strip().upper())
-            st.stop()
-
+    # ריענון כל שנייה עד תגובה/timeout
     time.sleep(1)
     st.rerun()
 
@@ -297,56 +297,49 @@ def handle_response(key_pressed: str):
     finish_trial(resp_key=key, rt_sec=rt, correct=acc)
 
 def screen_end():
-    log_debug("Experiment ended. Showing results.")
+    log_debug("Experiment ended.")
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
 
     df = pd.DataFrame(st.session_state.results)
-    st.subheader("תוצאות גולמיות")
-    st.dataframe(df, use_container_width=True, hide_index=True)
 
-    if not df.empty:
-        st.subheader("סיכום לפי Color")
-        agg = (
-            df.assign(RT_ms=pd.to_numeric(df["RT_ms"], errors="coerce"))
-              .groupby("Color", dropna=False)
-              .agg(Mean_RT_ms=("RT_ms", "mean"),
-                   SD_RT_ms=("RT_ms", "std"),
-                   Accuracy_pct=("Accuracy", lambda s: 100*s.mean() if len(s)>0 else 0))
-              .round(2)
-              .reset_index()
-        )
-        st.dataframe(agg, use_container_width=True, hide_index=True)
+    if ADMIN_MODE:
+        st.info("מצב מנהל — הצגת תוצאות:")
+        st.subheader("תוצאות גולמיות")
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
-    # Downloads
-    csv_bytes = df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
-    st.download_button("הורדת תוצאות (CSV)", data=csv_bytes,
-                       file_name=f"results_{int(time.time())}.csv",
-                       mime="text/csv")
+        if not df.empty:
+            st.subheader("סיכום לפי Color")
+            agg = (
+                df.assign(RT_ms=pd.to_numeric(df["RT_ms"], errors="coerce"))
+                  .groupby("Color", dropna=False)
+                  .agg(Mean_RT_ms=("RT_ms", "mean"),
+                       SD_RT_ms=("RT_ms", "std"),
+                       Accuracy_pct=("Accuracy", lambda s: 100*s.mean() if len(s)>0 else 0))
+                  .round(2)
+                  .reset_index()
+            )
+            st.dataframe(agg, use_container_width=True, hide_index=True)
 
-    from io import BytesIO
-    xbuf = BytesIO()
-    with pd.ExcelWriter(xbuf, engine="openpyxl") as xw:
-        df.to_excel(xw, sheet_name="RawResults", index=False)
-        try:
-            agg.to_excel(xw, sheet_name="SummaryByColor", index=False)
-        except Exception:
-            pass
-    st.download_button("הורדת תוצאות (Excel)", data=xbuf.getvalue(),
-                       file_name=f"results_{int(time.time())}.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        # הורדות (למנהל בלבד)
+        csv_bytes = df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+        st.download_button("הורדת תוצאות (CSV)", data=csv_bytes,
+                           file_name=f"results_{int(time.time())}.csv",
+                           mime="text/csv")
 
-    if st.session_state.get("DEBUG") and st.session_state.get("debug_log"):
-        st.subheader("Debug Log")
-        log_text = "\n".join(st.session_state["debug_log"])
-        st.text_area("Log", log_text, height=200)
-        st.download_button(
-            "הורדת Debug Log",
-            data=log_text.encode("utf-8"),
-            file_name="debug_log.txt",
-            mime="text/plain"
-        )
+        from io import BytesIO
+        xbuf = BytesIO()
+        with pd.ExcelWriter(xbuf, engine="openpyxl") as xw:
+            df.to_excel(xw, sheet_name="RawResults", index=False)
+            try:
+                agg.to_excel(xw, sheet_name="SummaryByColor", index=False)
+            except Exception:
+                pass
+        st.download_button("הורדת תוצאות (Excel)", data=xbuf.getvalue(),
+                           file_name=f"results_{int(time.time())}.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+    # כפתור התחלה מחדש (זמין לכולם)
     if st.button("התחלה מחדש"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
