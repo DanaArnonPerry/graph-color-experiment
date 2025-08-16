@@ -238,7 +238,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
     return result
 
 # -------- גרף: הגדרת רוחב מקסימלי וחכמת מרכז --------
-GRAPH_MAX_WIDTH_PX = 1100  # מקסימום רוחב תצוגה (התאימי לטעמך)
+GRAPH_MAX_WIDTH_PX = 1500  # מקסימום רוחב תצוגה (התאימי לטעמך)
 
 def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
