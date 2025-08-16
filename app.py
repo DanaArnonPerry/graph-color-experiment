@@ -265,10 +265,10 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
 
 # ========= Screens =========
 def screen_welcome():
-    st.title("ניסוי בזיכרון חזותי של גרפים ")
+    st.title("📊 ניסוי בזיכרון חזותי של גרפים ")
     st.markdown(
         """
-**שלום וברוכ/ה הבא/ה לניסוי בזיכרון חזותי של גרפים! **  
+**שלום וברוכ/ה הבא/ה לניסוי ! **  
 .במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר בגרף. חשוב לענות מהר ככל שניתן, לאחר 30 שניות, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.   
 
 **איך עונים?**
