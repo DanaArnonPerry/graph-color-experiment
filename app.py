@@ -247,21 +247,30 @@ def _render_graph_block(title_html, question_text, image_file):
         st.image(img, use_container_width=True)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
+    # חישוב זמן שנותר
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
-    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
+
+    # אם הזמן נגמר – נמשיך הלאה
     if elapsed >= timeout_sec:
         on_timeout()
         st.stop()
 
-    # ריווח צדדים + 5 כפתורים (A הכי שמאלי)
+    # כפתורי התשובה (עם ריווח בצדדים)
     cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
     for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
         if cols[idx].button(lab, use_container_width=True):
             on_press(lab)
             st.stop()
 
-    # רענון כל שנייה להצגת הטיימר
+    # >>> הטיימר עובר לפה – מתחת לאפשרויות <<<
+    st.markdown(
+        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
+        f"<b>{remain}</b> שניות</div>",
+        unsafe_allow_html=True,
+    )
+
+    # רענון פעם בשנייה
     time.sleep(1)
     st.rerun()
 
