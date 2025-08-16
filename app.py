@@ -317,24 +317,6 @@ def screen_welcome():
         st.session_state.page = "practice_intro"
         st.rerun()
 
-def screen_practice_intro():
-    st.title("תרגול – הוראות קצרות")
-    st.markdown(
-        """
-התרגול הבא **לא נשמר** לתוצאות. מטרתו לוודא שהבנת בדיוק מה לעשות:
-
-- קראי את השאלה בראש המסך (נמוך/גבוה ביותר).
-- הסתכלי על הגרף.
-- לחצי על הכפתור **A–E** שמתאים לעמודה הנכונה (A הכי שמאלית).
-- יש **30 שניות** לכל מסך.
-
-כשתהיי מוכנה, לחצי על **התחלת תרגול**.
-"""
-    )
-    if st.button("התחלת תרגול"):
-        st.session_state.page = "practice"
-        st.rerun()
-
 def screen_practice():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
@@ -342,11 +324,7 @@ def screen_practice():
     title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
-    def on_timeout():
-        st.session_state.t_start = None
-        st.session_state.page = "trial"
-        st.rerun()
-
+  
     def on_press(_):
         st.session_state.t_start = None
         st.session_state.page = "trial"
