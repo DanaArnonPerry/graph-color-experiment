@@ -10,7 +10,7 @@ from io import BytesIO
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-RESPONSE_KEYS = ["A", "B", "C", "D", "E"]  # סדר לוגי; העימוד קובע מי שמאלי/ימני
+RESPONSE_KEYS = ["A", "B", "C", "D", "E"]  # סדר לוגי
 
 # ========= Required Columns (exactly as in Colors in charts.csv) =========
 REQUIRED_COLS = [
@@ -39,6 +39,19 @@ except Exception:
 
 st.sidebar.header("⚙️ תפריט מנהל")
 ADMIN_MODE = st.sidebar.checkbox("Admin Mode", value=ADMIN_FROM_URL, help="הצגת כלי בדיקה ותוצאות")
+
+# ברירת מחדל לריפודים (אחוזים מהרוחב הכולל)
+DEFAULT_LEFT_PAD = 0.10
+DEFAULT_RIGHT_PAD = 0.10
+
+# אם מנהל - אפשר לכוון בזמן אמת
+if ADMIN_MODE:
+    st.sidebar.subheader("יישור כפתורים לגרף")
+    LEFT_PAD = st.sidebar.slider("ריפוד שמאל (אחוזי רוחב)", 0.00, 0.30, DEFAULT_LEFT_PAD, 0.01)
+    RIGHT_PAD = st.sidebar.slider("ריפוד ימין (אחוזי רוחב)", 0.00, 0.30, DEFAULT_RIGHT_PAD, 0.01)
+else:
+    LEFT_PAD = DEFAULT_LEFT_PAD
+    RIGHT_PAD = DEFAULT_RIGHT_PAD
 
 # ========= Session State =========
 def init_state():
@@ -205,12 +218,16 @@ def screen_trial():
         finish_trial(resp_key=None, rt_sec=TRIAL_TIMEOUT_SEC, correct=0)
         st.stop()
 
-    # כפתורי תשובה בלבד — A הכי שמאלי
-    cols = st.columns(5)
-    keys_layout = ["E", "D", "C", "B", "A"]  # אם יוצא הפוך אצלך, החליפי ל-["E","D","C","B","A"]
-    for idx, label in enumerate(keys_layout):
-        if cols[idx].button(label, use_container_width=True):
-            handle_response(label); st.stop()
+    # ----- שורת כפתורים מיושרת לרוחב הגרף -----
+    # ריפוד שמאל/ימין כאחוזים מהרוחב הכולל (ערכים מגיעים מ-Admin או ברירת מחדל)
+    # בונים שורה: ריפוד שמאלי, 5 כפתורים, ריפוד ימני
+    cols = st.columns([LEFT_PAD, 1, 1, 1, 1, 1, RIGHT_PAD])
+
+    # סדר הכפתורים כך ש-A הכי שמאלי
+    labels = ["A", "B", "C", "D", "E"]
+    for idx, lab in enumerate(labels, start=1):  # עמודות 1..5 הן הכפתורים (0 ו-6 הם הריפוד)
+        if cols[idx].button(lab, use_container_width=True):
+            handle_response(lab); st.stop()
 
     time.sleep(1)
     st.rerun()
