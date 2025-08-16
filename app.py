@@ -23,7 +23,7 @@ REQUIRED_COLS = [
 DATA_PATH = "data/colors_in_charts.csv"
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי גרפים – גרסה פשוטה", page_icon="📊", layout="centered")
+st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
 st.markdown("""
 <style>
 html, body, [class*="css"]  { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
