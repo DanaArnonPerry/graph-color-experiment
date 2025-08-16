@@ -344,7 +344,7 @@ def screen_trial():
     i = st.session_state.i
     t = st.session_state.trials[i]
 
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def finish_with(resp_key, rt_sec, correct):
