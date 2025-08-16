@@ -320,7 +320,7 @@ def screen_practice_intro():
     - יש **30 שניות** לכל מסך.
 
     כשתהיי מוכנה, לחצי על **התחלת תרגול**.
-    ""\)
+    "")
     if st.button("התחלת תרגול"):
         st.session_state.page = "practice"
         st.rerun()
