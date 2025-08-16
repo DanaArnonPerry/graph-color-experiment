@@ -207,7 +207,7 @@ def screen_trial():
 
     # כפתורי תשובה בלבד — A הכי שמאלי
     cols = st.columns(5)
-    keys_layout = ["A", "B", "C", "D", "E"]  # אם יוצא הפוך אצלך, החליפי ל-["E","D","C","B","A"]
+    keys_layout = ["E", "D", "C", "B", "A"]  # אם יוצא הפוך אצלך, החליפי ל-["E","D","C","B","A"]
     for idx, label in enumerate(keys_layout):
         if cols[idx].button(label, use_container_width=True):
             handle_response(label); st.stop()
