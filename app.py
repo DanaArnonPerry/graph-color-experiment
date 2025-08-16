@@ -19,6 +19,9 @@ REQUIRED_COLS = [
     "ImageFileName", "QuestionText", "QCorrectAnswer"
 ]
 
+# ========= Data path (fixed, no uploader) =========
+DATA_PATH = "data/colors_in_charts.csv"
+
 # ========= Page Setup =========
 st.set_page_config(page_title="ניסוי גרפים – גרסה פשוטה", page_icon="📊", layout="centered")
 st.markdown("""
@@ -49,6 +52,15 @@ def log_debug(msg: str):
 
 init_state()
 
+# ========= Data Loading =========
+@st.cache_data
+def load_data():
+    # קורא UTF-8 עם fallback ל־UTF-8-SIG
+    try:
+        return pd.read_csv(DATA_PATH, encoding="utf-8")
+    except Exception:
+        return pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+
 # ========= Utilities =========
 def load_image(path: str):
     if not path:
@@ -68,10 +80,15 @@ def load_image(path: str):
         return None
 
 def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    דו״ח תקינות על 40 השורות הראשונות:
+    - ValidAnswer: QCorrectAnswer ∈ {A,B,C,D,E}
+    - ImageExists: קובץ קיים/URL מחזיר 200 (HEAD)
+    - Issues: פירוט בעיות
+    """
     rows = []
     for idx, row in df.head(N_TRIALS).iterrows():
         issues = []
-
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
         valid_ans = ans in {"A","B","C","D","E"}
         if not valid_ans:
@@ -92,12 +109,13 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
         else:
             image_ok = False
             issues.append("ImageFileName empty")
+
         if not image_ok and "ImageFileName empty" not in issues:
             issues.append("Image not found / URL error")
 
         rows.append({
             "RowIndex": idx+1,
-            "TrialID": row["ID"],
+            "TrialID": row.get("ID",""),
             "ImageFileName": img,
             "QCorrectAnswer": ans,
             "ValidAnswer": valid_ans,
@@ -116,28 +134,35 @@ def screen_welcome():
     יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
     """)
 
+    # Sidebar: Debug
     st.sidebar.header("⚙️ הגדרות")
     st.session_state["DEBUG"] = st.sidebar.checkbox("Debug Mode", value=False)
     if st.session_state["DEBUG"]:
         st.sidebar.caption("לוג יופיע בסיום ובמהלך הריצה.")
 
-    up = st.file_uploader("העלי את קובץ ה-CSV (Colors in charts.csv)", type=["csv"])
+    # Load CSV from disk
+    if not os.path.exists(DATA_PATH):
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}. ודאי שהקובץ נמצא בתיקייה הזו בשם המדויק.")
+        st.stop()
 
-    # Preflight
-    if up is not None and st.button("בדיקת תקינות (Preflight)"):
-        try:
-            df_pre = pd.read_csv(up, encoding="utf-8")
-        except Exception:
-            up.seek(0)
-            df_pre = pd.read_csv(up, encoding="utf-8-sig")
+    try:
+        df = load_data()
+    except Exception as e:
+        st.error(f"שגיאה בקריאת הקובץ: {e}")
+        st.stop()
 
-        missing = [c for c in REQUIRED_COLS if c not in df_pre.columns]
+    st.write("✅ הקובץ נטען בהצלחה!")
+    st.dataframe(df.head(), use_container_width=True, hide_index=True)
+
+    # Preflight on loaded df
+    if st.button("בדיקת תקינות (Preflight)"):
+        missing = [c for c in REQUIRED_COLS if c not in df.columns]
         if missing:
             st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
-        elif len(df_pre) < N_TRIALS:
+        elif len(df) < N_TRIALS:
             st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
         else:
-            rep = preflight_check(df_pre)
+            rep = preflight_check(df)
             bad = rep[(~rep["ValidAnswer"]) | (~rep["ImageExists"])]
             st.success("בדיקת תקינות הושלמה.")
             with st.expander("דו״ח Preflight"):
@@ -150,19 +175,9 @@ def screen_welcome():
                 file_name="preflight_report.csv",
                 mime="text/csv"
             )
-        up.seek(0)  # allow re-use for "המשך"
 
+    # Start experiment
     if st.button("המשך"):
-        if up is None:
-            st.error("נא להעלות קובץ CSV.")
-            return
-        log_debug("Loading CSV for main run")
-        try:
-            df = pd.read_csv(up, encoding="utf-8")
-        except Exception:
-            up.seek(0)
-            df = pd.read_csv(up, encoding="utf-8-sig")
-
         missing = [c for c in REQUIRED_COLS if c not in df.columns]
         if missing:
             st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
@@ -172,8 +187,6 @@ def screen_welcome():
             return
 
         df = df.fillna("").astype({c: str for c in df.columns})
-
-        # Simple selection: first 40 rows
         trials = df.iloc[:N_TRIALS].to_dict(orient="records")
 
         st.session_state.df = df
@@ -185,10 +198,8 @@ def screen_welcome():
         st.rerun()
 
 def screen_trial():
-    t_start = st.session_state.t_start
-    if t_start is None:
+    if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
-        t_start = st.session_state.t_start
 
     i = st.session_state.i
     t = st.session_state.trials[i]
