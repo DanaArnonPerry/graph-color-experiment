@@ -89,7 +89,7 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
     for idx, row in df.head(N_TRIALS).iterrows():
         issues = []
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
-        valid_ans = ans in {"E","B","C","D","E"}
+        valid_ans = ans in {"A","B","C","D","E"}
         if not valid_ans:
             issues.append("QCorrectAnswer not in A–E")
 
