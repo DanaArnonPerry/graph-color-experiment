@@ -311,7 +311,7 @@ def screen_welcome():
 
 def screen_practice_intro():
     st.title("תרגול – הוראות קצרות")
-    st.markdown(\"\"\"
+    st.markdown("""
     התרגול הבא **לא נשמר** לתוצאות. מטרתו לוודא שהבנת בדיוק מה לעשות:
 
     - קראי את השאלה בראש המסך (נמוך/גבוה ביותר).
@@ -320,7 +320,7 @@ def screen_practice_intro():
     - יש **30 שניות** לכל מסך.
 
     כשתהיי מוכנה, לחצי על **התחלת תרגול**.
-    \"\"\")
+    ""\)
     if st.button("התחלת תרגול"):
         st.session_state.page = "practice"
         st.rerun()
@@ -329,7 +329,7 @@ def screen_practice():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
     t = st.session_state.practice
-    title_html = \"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>\"
+    title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def on_timeout():
@@ -345,7 +345,7 @@ def screen_trial():
     i = st.session_state.i
     t = st.session_state.trials[i]
 
-    title_html = f\"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>\"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def finish_with(resp_key, rt_sec, correct):
@@ -354,16 +354,16 @@ def screen_trial():
             "RunStartISO": st.session_state.run_start_iso,
             "TrialIndex": st.session_state.i + 1,
             "ID": t["ID"],
-            "ResponseKey\": resp_key or \"\",
+            "ResponseKey": resp_key or "",
             "QCorrectAnswer": t["QCorrectAnswer"],
             "Accuracy": int(correct),
-            \"RT_sec\": round(rt_sec, 3)
+            "RT_sec": round(rt_sec, 3)
         })
         st.session_state.t_start = None
         if st.session_state.i + 1 < len(st.session_state.trials):
             st.session_state.i += 1; st.rerun()
         else:
-            st.session_state.page = \"end\"; st.rerun()
+            st.session_state.page = "end"; st.rerun()
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
@@ -375,31 +375,31 @@ def screen_trial():
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_end():
-    st.title(\"סיום הניסוי\")
-    st.success(\"תודה על השתתפותך!\")
+    st.title("סיום הניסוי")
+    st.success("תודה על השתתפותך!")
 
     df = pd.DataFrame(st.session_state.results)
 
     # שמירה ל-Google Sheets בלבד
     try:
         append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-        st.caption(\"התוצאות נשמרו ל-Google Sheets (פרטי).\"
+        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי)."
         )
     except Exception as e:
-        st.info(f\"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}\")
+        st.info(f"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}")
 
     # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
         st.download_button(
-            \"הורדת תוצאות (CSV)\",
-            data=df.to_csv(index=False, encoding=\"utf-8-sig\"),
-            file_name=f\"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv\",
-            mime=\"text/csv\"
+            "הורדת תוצאות (CSV)",
+            data=df.to_csv(index=False, encoding="utf-8-sig"),
+            file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
+            mime="text/csv"
         )
         st.link_button(
-            \"פתח/י את Google Sheet\",
-            f\"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit\",
-            type=\"primary\"
+            "פתח/י את Google Sheet",
+            f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
+            type="primary"
         )
 
     # חתימת מותג עדינה (אופציונלי)
