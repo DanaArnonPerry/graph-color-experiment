@@ -265,7 +265,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
 
 # ========= Screens =========
 def screen_welcome():
-    st.title("ניסוי בזיכרון חזותי של גרפים "), page_icon="📊", layout="centered")
+    st.title("ניסוי בזיכרון חזותי של גרפים "), page_icon="📊", layout="centered"
     st.markdown(
         """
 **שלום וברוכ/ה הבא/ה לניסוי בזיכרון חזותי של גרפים! **  
