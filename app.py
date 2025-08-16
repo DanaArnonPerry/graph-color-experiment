@@ -22,6 +22,25 @@ REQUIRED_COLS = [
 # ========= Data path (fixed, no uploader) =========
 DATA_PATH = "data/colors_in_charts.csv"
 
+# ========= Brand assets (adjust as needed) =========
+# ננסה כמה אפשרויות שמופיעות ברפו לפי הצילומים שלך
+LOGO_CANDIDATES = [
+    "images/Logo.png", "images/logo.png", "Logo.png", "Logo", "images/Logo29.10.24_B.png"
+]
+USER_PHOTO_CANDIDATES = [
+    "images/DanaSherlok.png", "images/DanaSherlok.jpg", "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
+]
+WEBSITE_URL = "https://example.com"  # <<< עדכני לכתובת האתר שלך
+
+def first_existing(paths):
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    return None
+
+LOGO_PATH = first_existing(LOGO_CANDIDATES)
+USER_PHOTO_PATH = first_existing(USER_PHOTO_CANDIDATES)
+
 # ========= Page Setup =========
 st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
 st.markdown("""
@@ -39,6 +58,10 @@ except Exception:
 
 st.sidebar.header("⚙️ תפריט מנהל")
 ADMIN_MODE = st.sidebar.checkbox("Admin Mode", value=ADMIN_FROM_URL, help="הצגת כלי בדיקה ותוצאות")
+
+# לוגו – בסיידבר, עדין ולא מפריע
+if LOGO_PATH:
+    st.sidebar.image(LOGO_PATH, use_column_width=True)
 
 # ברירת מחדל לריפודים (אחוזים מהרוחב הכולל)
 DEFAULT_LEFT_PAD = 0.10
@@ -202,7 +225,11 @@ def screen_trial():
     i = st.session_state.i
     t = st.session_state.trials[i]
 
-    st.subheader(f"גרף מספר {i+1}")
+    # כותרת קטנה ומרוכזת (במקום st.subheader)
+    st.markdown(
+        f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>",
+        unsafe_allow_html=True
+    )
     st.markdown(f"### {t['QuestionText']}")
 
     img = load_image(t["ImageFileName"])
@@ -220,11 +247,10 @@ def screen_trial():
 
     # ----- שורת כפתורים מיושרת לרוחב הגרף -----
     # ריפוד שמאל/ימין כאחוזים מהרוחב הכולל (ערכים מגיעים מ-Admin או ברירת מחדל)
-    # בונים שורה: ריפוד שמאלי, 5 כפתורים, ריפוד ימני
     cols = st.columns([LEFT_PAD, 1, 1, 1, 1, 1, RIGHT_PAD])
 
     # סדר הכפתורים כך ש-A הכי שמאלי
-    labels = ["E", "D", "C", "B", "A"]
+    labels = ["A", "B", "C", "D", "E"]
     for idx, lab in enumerate(labels, start=1):  # עמודות 1..5 הן הכפתורים (0 ו-6 הם הריפוד)
         if cols[idx].button(lab, use_container_width=True):
             handle_response(lab); st.stop()
@@ -266,6 +292,19 @@ def screen_end():
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
 
+    # פרטי מותג עדינים למטה (לא מפריע למשתתף)
+    cols = st.columns([1,1,1])
+    with cols[1]:
+        if USER_PHOTO_PATH:
+            st.image(USER_PHOTO_PATH, width=120, caption=None, use_column_width=False)
+        if WEBSITE_URL:
+            st.markdown(
+                f"<div style='text-align:center; margin-top:8px;'>"
+                f"<a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
     # תוצאות למנהל בלבד
     if ADMIN_MODE:
         df = pd.DataFrame(st.session_state.results)
@@ -301,11 +340,6 @@ def screen_end():
         st.download_button("הורדת תוצאות (Excel)", data=xbuf.getvalue(),
                            file_name=f"results_{int(time.time())}.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-    if st.button("התחלה מחדש"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        init_state(); st.rerun()
 
 # ========= Router =========
 if st.session_state.page == "welcome":
