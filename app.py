@@ -68,15 +68,10 @@ def load_image(path: str):
         return None
 
 def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Returns a report DataFrame for the first 40 rows:
-    - ValidAnswer: QCorrectAnswer ∈ {A,B,C,D,E}
-    - ImageExists: local path exists / URL returns 200 on HEAD
-    - Issues: string list of problems
-    """
     rows = []
     for idx, row in df.head(N_TRIALS).iterrows():
         issues = []
+
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
         valid_ans = ans in {"A","B","C","D","E"}
         if not valid_ans:
@@ -87,7 +82,6 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
         if img:
             if img.startswith(("http://","https://")):
                 try:
-                    import requests
                     r = requests.head(img, timeout=5)
                     if r.status_code >= 400:
                         image_ok = False
@@ -188,7 +182,7 @@ def screen_welcome():
         st.session_state.t_start = None
         st.session_state.results = []
         st.session_state.page = "trial"
-        st.experimental_rerun()
+        st.rerun()
 
 def screen_trial():
     t_start = st.session_state.t_start
@@ -217,7 +211,7 @@ def screen_trial():
         st.warning(f"לא ניתן לטעון תמונה: {t['ImageFileName']}")
         log_debug(f"Image load failed: {t['ImageFileName']}")
     if img is not None:
-        st.image(img, use_column_width=True)
+        st.image(img, use_container_width=True)
 
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, TRIAL_TIMEOUT_SEC - int(elapsed))
@@ -241,7 +235,7 @@ def screen_trial():
             st.stop()
 
     time.sleep(1)
-    st.experimental_rerun()
+    st.rerun()
 
 def finish_trial(resp_key: str | None, rt_sec: float | None, correct: int):
     t = st.session_state.trials[st.session_state.i]
@@ -266,10 +260,10 @@ def finish_trial(resp_key: str | None, rt_sec: float | None, correct: int):
     st.session_state.t_start = None
     if st.session_state.i + 1 < len(st.session_state.trials):
         st.session_state.i += 1
-        st.experimental_rerun()
+        st.rerun()
     else:
         st.session_state.page = "end"
-        st.experimental_rerun()
+        st.rerun()
 
 def handle_response(key_pressed: str):
     key = key_pressed.strip().upper()
@@ -337,7 +331,7 @@ def screen_end():
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         init_state()
-        st.experimental_rerun()
+        st.rerun()
 
 # ========= Router =========
 if st.session_state.page == "welcome":
