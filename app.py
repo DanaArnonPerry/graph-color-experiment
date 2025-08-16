@@ -42,7 +42,7 @@ LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
+st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
 st.markdown(
     """
 <style>
