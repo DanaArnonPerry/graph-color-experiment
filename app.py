@@ -293,8 +293,6 @@ def screen_welcome():
             # נפלנו על הרשאות/אופליין – נשתמש בזמן כמזהה חד־פעמי
             st.session_state.participant_id = f"S{int(time.time())}"
 
-    st.info(f"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}")
-
     if not os.path.exists(DATA_PATH):
         st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
         st.stop()
