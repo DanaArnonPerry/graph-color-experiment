@@ -22,13 +22,13 @@ REQUIRED_COLS = [
 # ========= Data path (fixed, no uploader) =========
 DATA_PATH = "data/colors_in_charts.csv"
 
-# ========= Brand assets (adjust as needed) =========
-# ננסה כמה אפשרויות שמופיעות ברפו לפי הצילומים שלך
+# ========= Brand assets =========
 LOGO_CANDIDATES = [
     "images/Logo.png", "images/logo.png", "Logo.png", "Logo", "images/Logo29.10.24_B.png"
 ]
 USER_PHOTO_CANDIDATES = [
-    "images/DanaSherlok.png", "images/DanaSherlok.jpg", "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
+    "images/DanaSherlok.png", "images/DanaSherlok.jpg",
+    "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
 ]
 WEBSITE_URL = "https://example.com"  # <<< עדכני לכתובת האתר שלך
 
@@ -61,9 +61,9 @@ ADMIN_MODE = st.sidebar.checkbox("Admin Mode", value=ADMIN_FROM_URL, help="הצ�
 
 # לוגו – בסיידבר, עדין ולא מפריע
 if LOGO_PATH:
-    st.sidebar.image(LOGO_PATH, use_column_width=True)
+    st.sidebar.image(LOGO_PATH, use_container_width=True)
 
-# ברירת מחדל לריפודים (אחוזים מהרוחב הכולל)
+# ברירות מחדל לריפודי הכפתורים
 DEFAULT_LEFT_PAD = 0.10
 DEFAULT_RIGHT_PAD = 0.10
 
@@ -79,10 +79,11 @@ else:
 # ========= Session State =========
 def init_state():
     ss = st.session_state
-    ss.setdefault("page", "welcome")
+    ss.setdefault("page", "welcome")     # welcome -> practice -> trial -> end
     ss.setdefault("df", None)
-    ss.setdefault("trials", None)
-    ss.setdefault("i", 0)
+    ss.setdefault("practice", None)      # פריט התרגול (dict)
+    ss.setdefault("trials", None)        # פריטי הניסוי (list[dict])
+    ss.setdefault("i", 0)                # אינדקס ניסוי (לא כולל תרגול)
     ss.setdefault("t_start", None)
     ss.setdefault("results", [])
     ss.setdefault("image_cache", {})
@@ -188,8 +189,8 @@ def screen_welcome():
             missing = [c for c in REQUIRED_COLS if c not in df.columns]
             if missing:
                 st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
-            elif len(df) < N_TRIALS:
-                st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
+            elif len(df) < (N_TRIALS + 1):
+                st.error(f"הקובץ צריך לכלול לפחות {N_TRIALS+1} שורות (1 תרגול + {N_TRIALS} ניסויים).")
             else:
                 rep = preflight_check(df)
                 bad = rep[(~rep["ValidAnswer"]) | (~rep["ImageExists"])]
@@ -199,25 +200,80 @@ def screen_welcome():
                 if len(bad) > 0:
                     st.warning("נמצאו בעיות בחלק מהשורות הראשונות. מומלץ לתקן לפני הרצה.")
 
-    # כפתור המשך (לכולם)
+    # כפתור המשך (לכולם) — יכין תרגול וניסוי
     if st.button("המשך"):
         missing = [c for c in REQUIRED_COLS if c not in df.columns]
         if missing:
             st.error("חסרות עמודות בקובץ: " + ", ".join(missing)); return
-        if len(df) < N_TRIALS:
-            st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות."); return
+        if len(df) < (N_TRIALS + 1):
+            st.error(f"הקובץ צריך לכלול לפחות {N_TRIALS+1} שורות (1 תרגול + {N_TRIALS} ניסויים)."); return
 
         df = df.fillna("").astype({c: str for c in df.columns})
-        trials = df.iloc[:N_TRIALS].to_dict(orient="records")
+        practice_item = df.iloc[0].to_dict()
+        trials = df.iloc[1:N_TRIALS+1].to_dict(orient="records")
 
         st.session_state.df = df
+        st.session_state.practice = practice_item
         st.session_state.trials = trials
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
+        st.session_state.page = "practice"
+        st.rerun()
+
+def _render_graph_block(title_html, question_text, image_file):
+    # כותרת קטנה ומרוכזת
+    st.markdown(title_html, unsafe_allow_html=True)
+    st.markdown(f"### {question_text}")
+
+    img = load_image(image_file)
+    if img is None and image_file:
+        st.warning(f"לא ניתן לטעון תמונה: {image_file}")
+    if img is not None:
+        st.image(img, use_container_width=True)
+
+def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
+    elapsed = time.time() - (st.session_state.t_start or time.time())
+    remain = max(0, timeout_sec - int(elapsed))
+    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
+    if elapsed >= timeout_sec:
+        on_timeout()
+        st.stop()
+
+    cols = st.columns([LEFT_PAD, 1, 1, 1, 1, 1, RIGHT_PAD])
+    labels = ["A", "B", "C", "D", "E"]
+    for idx, lab in enumerate(labels, start=1):
+        if cols[idx].button(lab, use_container_width=True):
+            on_press(lab)
+            st.stop()
+
+    time.sleep(1)
+    st.rerun()
+
+# -------- Practice screen (one warm-up trial) --------
+def screen_practice():
+    if st.session_state.t_start is None:
+        st.session_state.t_start = time.time()
+
+    t = st.session_state.practice
+    title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
+    _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
+
+    def on_timeout():
+        # בתרגול לא שומרים תוצאה
+        st.session_state.t_start = None
         st.session_state.page = "trial"
         st.rerun()
 
+    def on_press(key):
+        # בתרגול לא שומרים תוצאה
+        st.session_state.t_start = None
+        st.session_state.page = "trial"
+        st.rerun()
+
+    _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+
+# -------- Actual trial screen --------
 def screen_trial():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
@@ -225,38 +281,19 @@ def screen_trial():
     i = st.session_state.i
     t = st.session_state.trials[i]
 
-    # כותרת קטנה ומרוכזת (במקום st.subheader)
-    st.markdown(
-        f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>",
-        unsafe_allow_html=True
-    )
-    st.markdown(f"### {t['QuestionText']}")
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
+    _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
-    img = load_image(t["ImageFileName"])
-    if img is None and t["ImageFileName"]:
-        st.warning(f"לא ניתן לטעון תמונה: {t['ImageFileName']}")
-    if img is not None:
-        st.image(img, use_container_width=True)
-
-    elapsed = time.time() - (st.session_state.t_start or time.time())
-    remain = max(0, TRIAL_TIMEOUT_SEC - int(elapsed))
-    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
-    if elapsed >= TRIAL_TIMEOUT_SEC:
+    def on_timeout():
         finish_trial(resp_key=None, rt_sec=TRIAL_TIMEOUT_SEC, correct=0)
-        st.stop()
 
-    # ----- שורת כפתורים מיושרת לרוחב הגרף -----
-    # ריפוד שמאל/ימין כאחוזים מהרוחב הכולל (ערכים מגיעים מ-Admin או ברירת מחדל)
-    cols = st.columns([LEFT_PAD, 1, 1, 1, 1, 1, RIGHT_PAD])
+    def on_press(key):
+        t0 = st.session_state.t_start or time.time()
+        rt = time.time() - t0
+        acc = int(key == str(t["QCorrectAnswer"]).strip().upper())
+        finish_trial(resp_key=key, rt_sec=rt, correct=acc)
 
-    # סדר הכפתורים כך ש-A הכי שמאלי
-    labels = ["A", "B", "C", "D", "E"]
-    for idx, lab in enumerate(labels, start=1):  # עמודות 1..5 הן הכפתורים (0 ו-6 הם הריפוד)
-        if cols[idx].button(lab, use_container_width=True):
-            handle_response(lab); st.stop()
-
-    time.sleep(1)
-    st.rerun()
+    _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def finish_trial(resp_key: str | None, rt_sec: float | None, correct: int):
     t = st.session_state.trials[st.session_state.i]
@@ -277,17 +314,6 @@ def finish_trial(resp_key: str | None, rt_sec: float | None, correct: int):
     else:
         st.session_state.page = "end"; st.rerun()
 
-def handle_response(key_pressed: str):
-    key = key_pressed.strip().upper()
-    if key not in RESPONSE_KEYS:
-        return
-    t0 = st.session_state.t_start or time.time()
-    rt = time.time() - t0
-    t = st.session_state.trials[st.session_state.i]
-    acc = int(key == str(t["QCorrectAnswer"]).strip().upper())
-    log_debug(f"Response: key={key} correct={acc} RT={rt:.3f}s")
-    finish_trial(resp_key=key, rt_sec=rt, correct=acc)
-
 def screen_end():
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
@@ -296,7 +322,7 @@ def screen_end():
     cols = st.columns([1,1,1])
     with cols[1]:
         if USER_PHOTO_PATH:
-            st.image(USER_PHOTO_PATH, width=120, caption=None, use_column_width=False)
+            st.image(USER_PHOTO_PATH, width=120)  # בלי use_column_width (דפריקייטד)
         if WEBSITE_URL:
             st.markdown(
                 f"<div style='text-align:center; margin-top:8px;'>"
@@ -342,9 +368,12 @@ def screen_end():
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ========= Router =========
-if st.session_state.page == "welcome":
+page = st.session_state.page
+if page == "welcome":
     screen_welcome()
-elif st.session_state.page == "trial":
+elif page == "practice":
+    screen_practice()
+elif page == "trial":
     screen_trial()
 else:
     screen_end()
