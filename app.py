@@ -124,7 +124,7 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
 
 # ========= Screens =========
 def screen_welcome():
-    st.title("ניסוי גרפים – גרסה פשוטה ומדויקת")
+    st.title("ניסוי גרפים")
     st.write("""
     **הנחיות:**  
     יוצגו לך 40 גרפים. בכל מסך עליך לזהות את העמודה עם הערך הנמוך או הגבוה ביותר (לפי השאלה).  
