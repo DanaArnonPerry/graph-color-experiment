@@ -43,12 +43,15 @@ USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
 st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
-st.markdown("""
+st.markdown(
+    """
 <style>
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ========= Session State =========
 def init_state():
@@ -104,11 +107,10 @@ def load_data():
     return df
 
 # ========= Google Sheets helpers =========
-
 def _read_service_account_from_secrets() -> dict:
     """
     תומך בשני פורמטים של secrets:
-    1) עם סעיף [service_account] (מומלץ)
+    1) סעיף [service_account] (מומלץ)
     2) מפתחות SA שטוחים בראש הקובץ + [admin]
     """
     try:
@@ -122,7 +124,7 @@ def _read_service_account_from_secrets() -> dict:
         "type", "project_id", "private_key_id", "private_key",
         "client_email", "client_id", "auth_uri", "token_uri",
         "auth_provider_x509_cert_url", "client_x509_cert_url",
-        "universe_domain"
+        "universe_domain",
     ]
     sa = {}
     for k in keys:
@@ -147,7 +149,7 @@ def _gs_client():
     return gspread.authorize(creds)
 
 def _ensure_headers(ws, expected_headers):
-    """ודא שתהיה שורת כותרת נכונה; אם חסרה/שגויה – נעדכן את השורה הראשונה."""
+    """ודאי שתהיה שורת כותרת נכונה; אם חסרה/שגויה – נעדכן את השורה הראשונה."""
     current = ws.get_all_values()
     headers = list(expected_headers)
     if not current:
@@ -155,7 +157,7 @@ def _ensure_headers(ws, expected_headers):
         return
     first_row = current[0]
     if first_row != headers:
-        ws.update('1:1', [headers])
+        ws.update("1:1", [headers])
 
 def get_next_participant_seq(sheet_id: str) -> int:
     """
@@ -165,19 +167,19 @@ def get_next_participant_seq(sheet_id: str) -> int:
     gc = _gs_client()
     sh = gc.open_by_key(sheet_id)
     try:
-        meta = sh.worksheet('Meta')
+        meta = sh.worksheet("Meta")
     except gspread.WorksheetNotFound:
-        meta = sh.add_worksheet(title='Meta', rows='2', cols='2')
-        meta.update('A1', 'counter')
-        meta.update('A2', '1')
+        meta = sh.add_worksheet(title="Meta", rows="2", cols="2")
+        meta.update("A1", "counter")
+        meta.update("A2", "1")
         return 1
 
     try:
-        cur = int(meta.acell('A2').value or '0')
+        cur = int(meta.acell("A2").value or "0")
     except Exception:
         cur = 0
     nxt = cur + 1
-    meta.update('A2', str(nxt))
+    meta.update("A2", str(nxt))
     return nxt
 
 def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
@@ -188,8 +190,8 @@ def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: 
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(
             title=worksheet_name,
-            rows=str(max(len(df)+10, 1000)),
-            cols=str(len(df.columns)+5)
+            rows=str(max(len(df) + 10, 1000)),
+            cols=str(len(df.columns) + 5),
         )
 
     _ensure_headers(ws, df.columns)
@@ -218,8 +220,10 @@ def load_image(path: str):
 
 def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
     """מנסה להימנע מ-V זהה פעמיים ברצף; אם אין איזון — ייתכן רצף."""
-    groups = {v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
-              for v, sub in pool_df.groupby("V")}
+    groups = {
+        v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
+        for v, sub in pool_df.groupby("V")
+    }
     vs = list(groups.keys())
     random.shuffle(vs)
     result, last_v = [], None
@@ -248,16 +252,16 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
         on_timeout()
         st.stop()
 
-    # A הכי שמאלי (ריווח צדדים + 5 כפתורים)
+    # ריווח צדדים + 5 כפתורים (A הכי שמאלי)
     cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
     for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
         if cols[idx].button(lab, use_container_width=True):
             on_press(lab)
             st.stop()
 
+    # רענון כל שנייה להצגת הטיימר
     time.sleep(1)
     st.rerun()
-
 
 # ========= Screens =========
 def screen_welcome():
@@ -273,21 +277,24 @@ def screen_welcome():
 - לכל גרף מוקצות **30 שניות**. אם לא נבחרה תשובה בזמן – עוברים אוטומטית למסך הבא.
 - לפני תחילת הניסוי יהיה **מסך תרגול אחד** (לא נספר בתוצאות) כדי לוודא שההוראות ברורות.
 
-כאשר תהיי מוכנה, לחצי על **המשך**.
-        """
+כאשר תהיי מוכנה, לחצי על **המשך לתרגול**.
+"""
     )
 
     # מזהה נבדק אוטומטי ורץ (S00001, S00002, ...)
     if not st.session_state.participant_id:
         try:
             seq = get_next_participant_seq(GSHEET_ID)
-            st.session_state.participant_id = f"${seq:05d}"
+            st.session_state.participant_id = f"S{seq:05d}"
         except Exception:
-            st.session_state.participant_id = f"${seq:05d}"
+            # נפלנו על הרשאות/אופליין – נשתמש בזמן כמזהה חד־פעמי
+            st.session_state.participant_id = f"S{int(time.time())}"
+
     st.info(f"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}")
 
     if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
+        st.stop()
     df = load_data()
 
     if st.button("המשך לתרגול"):
@@ -297,7 +304,7 @@ def screen_welcome():
         practice_item = df.iloc[0].to_dict()
 
         # ניסויים = 40 השורות הבאות (עם ניסיון לאזן קבוצות V)
-        pool_df = df.iloc[1:1+N_TRIALS].copy()
+        pool_df = df.iloc[1 : 1 + N_TRIALS].copy()
         trials = build_alternating_trials(pool_df, N_TRIALS)
 
         st.session_state.df = df
@@ -311,16 +318,18 @@ def screen_welcome():
 
 def screen_practice_intro():
     st.title("תרגול – הוראות קצרות")
-    st.markdown("""
-    התרגול הבא **לא נשמר** לתוצאות. מטרתו לוודא שהבנת בדיוק מה לעשות:
+    st.markdown(
+        """
+התרגול הבא **לא נשמר** לתוצאות. מטרתו לוודא שהבנת בדיוק מה לעשות:
 
-    - קראי את השאלה בראש המסך (נמוך/גבוה ביותר).
-    - הסתכלי על הגרף.
-    - לחצי על הכפתור **A–E** שמתאים לעמודה הנכונה (A הכי שמאלית).
-    - יש **30 שניות** לכל מסך.
+- קראי את השאלה בראש המסך (נמוך/גבוה ביותר).
+- הסתכלי על הגרף.
+- לחצי על הכפתור **A–E** שמתאים לעמודה הנכונה (A הכי שמאלית).
+- יש **30 שניות** לכל מסך.
 
-    כשתהיי מוכנה, לחצי על **התחלת תרגול**.
-    "")
+כשתהיי מוכנה, לחצי על **התחלת תרגול**.
+"""
+    )
     if st.button("התחלת תרגול"):
         st.session_state.page = "practice"
         st.rerun()
@@ -333,9 +342,14 @@ def screen_practice():
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def on_timeout():
-        st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
+        st.session_state.t_start = None
+        st.session_state.page = "trial"
+        st.rerun()
+
     def on_press(_):
-        st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
+        st.session_state.t_start = None
+        st.session_state.page = "trial"
+        st.rerun()
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
@@ -349,27 +363,32 @@ def screen_trial():
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def finish_with(resp_key, rt_sec, correct):
-        st.session_state.results.append({
-            "ParticipantID": st.session_state.participant_id,
-            "RunStartISO": st.session_state.run_start_iso,
-            "TrialIndex": st.session_state.i + 1,
-            "ID": t["ID"],
-            "ResponseKey": resp_key or "",
-            "QCorrectAnswer": t["QCorrectAnswer"],
-            "Accuracy": int(correct),
-            "RT_sec": round(rt_sec, 3)
-        })
+        st.session_state.results.append(
+            {
+                "ParticipantID": st.session_state.participant_id,
+                "RunStartISO": st.session_state.run_start_iso,
+                "TrialIndex": st.session_state.i + 1,
+                "ID": t["ID"],
+                "ResponseKey": resp_key or "",
+                "QCorrectAnswer": t["QCorrectAnswer"],
+                "Accuracy": int(correct),
+                "RT_sec": round(rt_sec, 3),
+            }
+        )
         st.session_state.t_start = None
         if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1; st.rerun()
+            st.session_state.i += 1
+            st.rerun()
         else:
-            st.session_state.page = "end"; st.rerun()
+            st.session_state.page = "end"
+            st.rerun()
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
+
     def on_press(key):
         rt = time.time() - (st.session_state.t_start or time.time())
-        correct = (key.strip().upper() == str(t[\"QCorrectAnswer\"]).strip().upper())
+        correct = key.strip().upper() == str(t["QCorrectAnswer"]).strip().upper()
         finish_with(resp_key=key.strip().upper(), rt_sec=rt, correct=correct)
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
@@ -383,8 +402,7 @@ def screen_end():
     # שמירה ל-Google Sheets בלבד
     try:
         append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי)."
-        )
+        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
     except Exception as e:
         st.info(f"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}")
 
@@ -394,24 +412,23 @@ def screen_end():
             "הורדת תוצאות (CSV)",
             data=df.to_csv(index=False, encoding="utf-8-sig"),
             file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
-            mime="text/csv"
+            mime="text/csv",
         )
         st.link_button(
             "פתח/י את Google Sheet",
             f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
-            type="primary"
+            type="primary",
         )
 
     # חתימת מותג עדינה (אופציונלי)
-    cols = st.columns([1,1,1])
+    cols = st.columns([1, 1, 1])
     with cols[1]:
         if USER_PHOTO_PATH:
             st.image(USER_PHOTO_PATH, width=120)
         if WEBSITE_URL:
             st.markdown(
-                f\"<div style='text-align:center; margin-top:8px;'>\"
-                f\"<a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a>\"
-                f\"</div>\", unsafe_allow_html=True
+                f"<div style='text-align:center; margin-top:8px;'><a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a></div>",
+                unsafe_allow_html=True,
             )
 
 # ========= Router =========
@@ -426,4 +443,3 @@ elif page == "trial":
     screen_trial()
 else:
     screen_end()
-)
