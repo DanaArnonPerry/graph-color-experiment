@@ -56,7 +56,7 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 # ========= Session State =========
 def init_state():
     ss = st.session_state
-    ss.setdefault("page", "welcome")     # welcome -> practice_intro -> practice -> trial -> end
+    ss.setdefault("page", "welcome")     # welcome -> practice -> trial -> end
     ss.setdefault("df", None)
     ss.setdefault("practice", None)
     ss.setdefault("trials", None)
