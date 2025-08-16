@@ -291,7 +291,7 @@ def screen_welcome():
     df = load_data()
 
     if st.button("המשך לתרגול"):
-        st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec=\"seconds\")
+        st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
         # תרגול = תמיד השורה הראשונה
         practice_item = df.iloc[0].to_dict()
@@ -306,7 +306,7 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
-        st.session_state.page = \"practice_intro\"
+        st.session_state.page = "practice_intro"
         st.rerun()
 
 def screen_practice_intro():
@@ -321,8 +321,8 @@ def screen_practice_intro():
 
     כשתהיי מוכנה, לחצי על **התחלת תרגול**.
     \"\"\")
-    if st.button(\"התחלת תרגול\"):
-        st.session_state.page = \"practice\"
+    if st.button("התחלת תרגול"):
+        st.session_state.page = "practice"
         st.rerun()
 
 def screen_practice():
@@ -333,9 +333,9 @@ def screen_practice():
     _render_graph_block(title_html, t[\"QuestionText\"], t[\"ImageFileName\"])
 
     def on_timeout():
-        st.session_state.t_start = None; st.session_state.page = \"trial\"; st.rerun()
+        st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
     def on_press(_):
-        st.session_state.t_start = None; st.session_state.page = \"trial\"; st.rerun()
+        st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
@@ -350,13 +350,13 @@ def screen_trial():
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
-            \"ParticipantID\": st.session_state.participant_id,
-            \"RunStartISO\": st.session_state.run_start_iso,
-            \"TrialIndex\": st.session_state.i + 1,
-            \"ID\": t[\"ID\"],
-            \"ResponseKey\": resp_key or \"\",
-            \"QCorrectAnswer\": t[\"QCorrectAnswer\"],
-            \"Accuracy\": int(correct),
+            "ParticipantID": st.session_state.participant_id,
+            "RunStartISO": st.session_state.run_start_iso,
+            "TrialIndex": st.session_state.i + 1,
+            "ID": t["ID"],
+            "ResponseKey\": resp_key or \"\",
+            "QCorrectAnswer": t["QCorrectAnswer"],
+            "Accuracy": int(correct),
             \"RT_sec\": round(rt_sec, 3)
         })
         st.session_state.t_start = None
@@ -416,13 +416,13 @@ def screen_end():
 
 # ========= Router =========
 page = st.session_state.page
-if page == \"welcome\":
+if page == "welcome":
     screen_welcome()
-elif page == \"practice_intro\":
+elif page == "practice_intro":
     screen_practice_intro()
-elif page == \"practice\":
+elif page == "practice":
     screen_practice()
-elif page == \"trial\":
+elif page == "trial":
     screen_trial()
 else:
     screen_end()
