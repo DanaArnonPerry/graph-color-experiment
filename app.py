@@ -32,13 +32,11 @@ USER_PHOTO_CANDIDATES = [
 ]
 WEBSITE_URL = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
 
-
 def _first_existing(paths):
     for p in paths:
         if os.path.exists(p):
             return p
     return None
-
 
 LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
@@ -239,15 +237,24 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
         last_v = v
     return result
 
-GRAPH_WIDTH_PX = 1200  # אפשר לשנות לכל מספר שתרצי
+# -------- גרף: הגדרת רוחב מקסימלי וחכמת מרכז --------
+GRAPH_MAX_WIDTH_PX = 1100  # מקסימום רוחב תצוגה (התאימי לטעמך)
 
 def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
-    img = load_image(image_file)
-    if img is not None:
-        st.image(img, width=GRAPH_WIDTH_PX)  # <-- במקום use_container_width
 
+    img = load_image(image_file)
+    if img is None:
+        return
+
+    # נבחר רוחב מטרה: לא לעבור את המקסימום ולא לעבור את רוחב הקובץ עצמו
+    target_w = min(GRAPH_MAX_WIDTH_PX, img.width)
+
+    # מציגים בעמודה מרכזית כדי שהגרף יהיה ממורכז ויפה
+    left, mid, right = st.columns([1, 6, 1])
+    with mid:
+        st.image(img, width=target_w)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     # חישוב זמן שנותר
@@ -266,7 +273,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
             on_press(lab)
             st.stop()
 
-    # >>> הטיימר עובר לפה – מתחת לאפשרויות <<<
+    # הטיימר מתחת לאפשרויות
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
         f"<b>{remain}</b> שניות</div>",
@@ -312,11 +319,7 @@ def screen_welcome():
 
     if st.button("המשך לתרגול"):
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
-
-        # תרגול = תמיד השורה הראשונה
         practice_item = df.iloc[0].to_dict()
-
-        # ניסויים = 40 השורות הבאות (עם ניסיון לאזן קבוצות V)
         pool_df = df.iloc[1: 1 + N_TRIALS].copy()
         trials = build_alternating_trials(pool_df, N_TRIALS)
 
@@ -326,7 +329,6 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
-        # >>> התיקון הקריטי: המעבר לדף התרגול <<<
         st.session_state.page = "practice"
         st.rerun()
 
@@ -337,7 +339,6 @@ def screen_practice():
     title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
-    # >>> התיקון: להגדיר on_timeout אחרי שהורדנו את מסך ה-intro <<<
     def on_timeout():
         st.session_state.t_start = None
         st.session_state.page = "trial"
@@ -401,7 +402,10 @@ def screen_end():
         append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
         st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
     except Exception as e:
-        st.info(f"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}")
+        if is_admin():
+            st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
+        else:
+            st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
 
     # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
