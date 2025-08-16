@@ -10,7 +10,7 @@ from io import BytesIO
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-RESPONSE_KEYS = ["A", "B", "C", "D", "E"]
+RESPONSE_KEYS = ["A", "B", "C", "D", "E"]  # סדר לוגי; העימוד קובע מי שמאלי/ימני
 
 # ========= Required Columns (exactly as in Colors in charts.csv) =========
 REQUIRED_COLS = [
@@ -31,16 +31,14 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 </style>
 """, unsafe_allow_html=True)
 
-# ========= Admin Mode (Sidebar + URL) =========
-# מצד ימין (סיידבר) נוסיף Toggle, ונוסיף תמיכה גם בפרמטר URL ?admin=1
+# ========= Admin (Sidebar + URL) =========
 try:
     ADMIN_FROM_URL = str(st.query_params.get("admin", "0")).lower() in ("1", "true", "yes")
 except Exception:
     ADMIN_FROM_URL = False
 
-st.sidebar.header("⚙️ הגדרות")
-is_admin_toggle = st.sidebar.checkbox("Admin Mode", value=ADMIN_FROM_URL, help="הצגת תוצאות בסיום הניסוי")
-ADMIN_MODE = ADMIN_FROM_URL or is_admin_toggle
+st.sidebar.header("⚙️ תפריט מנהל")
+ADMIN_MODE = st.sidebar.checkbox("Admin Mode", value=ADMIN_FROM_URL, help="הצגת כלי בדיקה ותוצאות")
 
 # ========= Session State =========
 def init_state():
@@ -52,12 +50,9 @@ def init_state():
     ss.setdefault("t_start", None)
     ss.setdefault("results", [])
     ss.setdefault("image_cache", {})
-    ss.setdefault("DEBUG", False)
     ss.setdefault("debug_log", [])
 
 def log_debug(msg: str):
-    if not st.session_state.get("DEBUG", False):
-        return
     ts = pd.Timestamp.now().isoformat()
     st.session_state.debug_log.append(f"[{ts}] {msg}")
 
@@ -66,7 +61,6 @@ init_state()
 # ========= Data Loading =========
 @st.cache_data
 def load_data():
-    # קורא UTF-8 עם fallback ל־UTF-8-SIG
     try:
         return pd.read_csv(DATA_PATH, encoding="utf-8")
     except Exception:
@@ -91,12 +85,6 @@ def load_image(path: str):
         return None
 
 def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    דו״ח תקינות על 40 השורות הראשונות:
-    - ValidAnswer: QCorrectAnswer ∈ {A,B,C,D,E}
-    - ImageExists: קובץ קיים/URL מחזיר 200 (HEAD)
-    - Issues: פירוט בעיות
-    """
     rows = []
     for idx, row in df.head(N_TRIALS).iterrows():
         issues = []
@@ -111,8 +99,7 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
             if img.startswith(("http://","https://")):
                 try:
                     r = requests.head(img, timeout=5)
-                    if r.status_code >= 400:
-                        image_ok = False
+                    image_ok = (r.status_code < 400)
                 except Exception:
                     image_ok = False
             else:
@@ -137,7 +124,6 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
 
 # ========= Screens =========
 def screen_welcome():
-    log_debug("Entered welcome screen")
     st.title("ניסוי גרפים – גרסה פשוטה ומדויקת")
     st.write("""
     **הנחיות:**  
@@ -145,32 +131,23 @@ def screen_welcome():
     יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
     """)
 
-    # Toggle Debug (למפתח/ת בלבד)
-    st.session_state["DEBUG"] = st.sidebar.checkbox("Debug Mode", value=st.session_state.get("DEBUG", False))
-
-    # Load CSV from disk
+    # טוענים את הקובץ — לא מציגים כלום למשתתף רגיל
     if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}. ודאי שהקובץ נמצא בתיקייה הזו בשם המדויק.")
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
         st.stop()
-
     try:
         df = load_data()
     except Exception as e:
         st.error(f"שגיאה בקריאת הקובץ: {e}")
         st.stop()
 
-    # הודעה בלבד (ללא טבלה כברירת מחדל)
-    st.success("הקובץ נטען בהצלחה!")
+    # כלי מנהל בלבד
+    if ADMIN_MODE:
+        st.success("הקובץ נטען בהצלחה!")
+        with st.expander("תצוגה מקדימה (אופציונלי)"):
+            if st.checkbox("הצג 5 שורות ראשונות", value=False):
+                st.dataframe(df.head(), use_container_width=True, hide_index=True)
 
-    # תצוגה מקדימה אופציונלית
-    with st.expander("תצוגה מקדימה (אופציונלי)"):
-        show_preview = st.checkbox("הצג 5 שורות ראשונות", value=False)
-        if show_preview:
-            st.dataframe(df.head(), use_container_width=True, hide_index=True)
-
-    # כפתורים: Preflight + המשך
-    c1, c2 = st.columns([1, 1])
-    with c1:
         if st.button("בדיקת תקינות (Preflight)"):
             missing = [c for c in REQUIRED_COLS if c not in df.columns]
             if missing:
@@ -185,75 +162,56 @@ def screen_welcome():
                     st.dataframe(rep, use_container_width=True, hide_index=True)
                 if len(bad) > 0:
                     st.warning("נמצאו בעיות בחלק מהשורות הראשונות. מומלץ לתקן לפני הרצה.")
-                st.download_button(
-                    "הורדת דו״ח תקינות (CSV)",
-                    data=rep.to_csv(index=False, encoding="utf-8-sig"),
-                    file_name="preflight_report.csv",
-                    mime="text/csv"
-                )
 
-    with c2:
-        if st.button("המשך"):
-            missing = [c for c in REQUIRED_COLS if c not in df.columns]
-            if missing:
-                st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
-                return
-            if len(df) < N_TRIALS:
-                st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
-                return
+    # כפתור המשך (לכולם)
+    if st.button("המשך"):
+        missing = [c for c in REQUIRED_COLS if c not in df.columns]
+        if missing:
+            st.error("חסרות עמודות בקובץ: " + ", ".join(missing)); return
+        if len(df) < N_TRIALS:
+            st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות."); return
 
-            df = df.fillna("").astype({c: str for c in df.columns})
-            trials = df.iloc[:N_TRIALS].to_dict(orient="records")
+        df = df.fillna("").astype({c: str for c in df.columns})
+        trials = df.iloc[:N_TRIALS].to_dict(orient="records")
 
-            st.session_state.df = df
-            st.session_state.trials = trials
-            st.session_state.i = 0
-            st.session_state.t_start = None
-            st.session_state.results = []
-            st.session_state.page = "trial"
-            st.rerun()
+        st.session_state.df = df
+        st.session_state.trials = trials
+        st.session_state.i = 0
+        st.session_state.t_start = None
+        st.session_state.results = []
+        st.session_state.page = "trial"
+        st.rerun()
 
 def screen_trial():
-    # התחלת טיימר לניסוי
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-    if i == 0:
-        log_debug(f"Start trials. Total={len(st.session_state.trials)}")
-    log_debug(f"Start trial index={i+1} ID={t['ID']} Image={t['ImageFileName']}")
 
-    # כותרת – ללא expander
     st.subheader(f"גרף מספר {i+1}")
     st.markdown(f"### {t['QuestionText']}")
 
-    # תמונה
     img = load_image(t["ImageFileName"])
     if img is None and t["ImageFileName"]:
         st.warning(f"לא ניתן לטעון תמונה: {t['ImageFileName']}")
-        log_debug(f"Image load failed: {t['ImageFileName']}")
     if img is not None:
         st.image(img, use_container_width=True)
 
-    # טיימר
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, TRIAL_TIMEOUT_SEC - int(elapsed))
     st.write(f"⏳ זמן שנותר: **{remain}** שניות")
     if elapsed >= TRIAL_TIMEOUT_SEC:
-        log_debug("Timeout occurred")
         finish_trial(resp_key=None, rt_sec=TRIAL_TIMEOUT_SEC, correct=0)
         st.stop()
 
     # כפתורי תשובה בלבד — A הכי שמאלי
     cols = st.columns(5)
-    keys_layout = ["A", "B", "C", "D", "E"]  # סדר משמאל לימין; אם אצלך מתהפך, החליפי ל-["E","D","C","B","A"]
+    keys_layout = ["A", "B", "C", "D", "E"]  # אם יוצא הפוך אצלך, החליפי ל-["E","D","C","B","A"]
     for idx, label in enumerate(keys_layout):
         if cols[idx].button(label, use_container_width=True):
-            handle_response(label)
-            st.stop()
+            handle_response(label); st.stop()
 
-    # ריענון כל שנייה עד תגובה/timeout
     time.sleep(1)
     st.rerun()
 
@@ -261,29 +219,20 @@ def finish_trial(resp_key: str | None, rt_sec: float | None, correct: int):
     t = st.session_state.trials[st.session_state.i]
     st.session_state.results.append({
         "TrialIndex": st.session_state.i + 1,
-        "ID": t["ID"],
-        "V": t["V"],
-        "ConditionFull": t["ConditionFull"],
-        "Color": t["Color"],
-        "Condition": t["Condition"],
-        "LowowOrHhigh": t["LowowOrHhigh"],
-        "ChartNumber": t["ChartNumber"],
+        "ID": t["ID"], "V": t["V"], "ConditionFull": t["ConditionFull"],
+        "Color": t["Color"], "Condition": t["Condition"],
+        "LowowOrHhigh": t["LowowOrHhigh"], "ChartNumber": t["ChartNumber"],
         "A": t["A"], "B": t["B"], "C": t["C"], "D": t["D"], "E": t["E"],
-        "ImageFileName": t["ImageFileName"],
-        "QuestionText": t["QuestionText"],
-        "ResponseKey": resp_key or "",
-        "QCorrectAnswer": t["QCorrectAnswer"],
-        "Accuracy": correct,
-        "RT_ms": int(rt_sec * 1000) if rt_sec is not None else "",
+        "ImageFileName": t["ImageFileName"], "QuestionText": t["QuestionText"],
+        "ResponseKey": resp_key or "", "QCorrectAnswer": t["QCorrectAnswer"],
+        "Accuracy": correct, "RT_ms": int(rt_sec * 1000) if rt_sec is not None else "",
         "Timestamp": pd.Timestamp.now().isoformat()
     })
     st.session_state.t_start = None
     if st.session_state.i + 1 < len(st.session_state.trials):
-        st.session_state.i += 1
-        st.rerun()
+        st.session_state.i += 1; st.rerun()
     else:
-        st.session_state.page = "end"
-        st.rerun()
+        st.session_state.page = "end"; st.rerun()
 
 def handle_response(key_pressed: str):
     key = key_pressed.strip().upper()
@@ -297,13 +246,12 @@ def handle_response(key_pressed: str):
     finish_trial(resp_key=key, rt_sec=rt, correct=acc)
 
 def screen_end():
-    log_debug("Experiment ended.")
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
 
-    df = pd.DataFrame(st.session_state.results)
-
+    # תוצאות למנהל בלבד
     if ADMIN_MODE:
+        df = pd.DataFrame(st.session_state.results)
         st.info("מצב מנהל — הצגת תוצאות:")
         st.subheader("תוצאות גולמיות")
         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -321,11 +269,9 @@ def screen_end():
             )
             st.dataframe(agg, use_container_width=True, hide_index=True)
 
-        # הורדות (למנהל בלבד)
         csv_bytes = df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button("הורדת תוצאות (CSV)", data=csv_bytes,
-                           file_name=f"results_{int(time.time())}.csv",
-                           mime="text/csv")
+                           file_name=f"results_{int(time.time())}.csv", mime="text/csv")
 
         from io import BytesIO
         xbuf = BytesIO()
@@ -339,12 +285,10 @@ def screen_end():
                            file_name=f"results_{int(time.time())}.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # כפתור התחלה מחדש (זמין לכולם)
     if st.button("התחלה מחדש"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        init_state()
-        st.rerun()
+        init_state(); st.rerun()
 
 # ========= Router =========
 if st.session_state.page == "welcome":
