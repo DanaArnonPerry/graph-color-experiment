@@ -284,13 +284,13 @@ def screen_welcome():
             st.session_state.participant_id = f"${seq:05d}"
         except Exception:
             st.session_state.participant_id = f"${seq:05d}"
-    st.info(f\"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}\")
+    st.info(f"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}")
 
     if not os.path.exists(DATA_PATH):
-        st.error(f\"לא נמצא הקובץ: {DATA_PATH}.\"); st.stop()
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
     df = load_data()
 
-    if st.button(\"המשך לתרגול\"):
+    if st.button("המשך לתרגול"):
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec=\"seconds\")
 
         # תרגול = תמיד השורה הראשונה
