@@ -310,7 +310,7 @@ def screen_welcome():
         st.rerun()
 
 def screen_practice_intro():
-    st.title(\"תרגול – הוראות קצרות\")
+    st.title("תרגול – הוראות קצרות")
     st.markdown(\"\"\"
     התרגול הבא **לא נשמר** לתוצאות. מטרתו לוודא שהבנת בדיוק מה לעשות:
 
@@ -330,7 +330,7 @@ def screen_practice():
         st.session_state.t_start = time.time()
     t = st.session_state.practice
     title_html = \"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>\"
-    _render_graph_block(title_html, t[\"QuestionText\"], t[\"ImageFileName\"])
+    _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def on_timeout():
         st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
@@ -346,7 +346,7 @@ def screen_trial():
     t = st.session_state.trials[i]
 
     title_html = f\"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>\"
-    _render_graph_block(title_html, t[\"QuestionText\"], t[\"ImageFileName\"])
+    _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
