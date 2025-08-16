@@ -239,12 +239,15 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
         last_v = v
     return result
 
+GRAPH_WIDTH_PX = 950  # אפשר לשנות לכל מספר שתרצי
+
 def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
     img = load_image(image_file)
     if img is not None:
-        st.image(img, use_container_width=True)
+        st.image(img, width=GRAPH_WIDTH_PX)  # <-- במקום use_container_width
+
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     # חישוב זמן שנותר
