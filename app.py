@@ -414,8 +414,6 @@ def screen_end():
 page = st.session_state.page
 if page == "welcome":
     screen_welcome()
-elif page == "practice_intro":
-    screen_practice_intro()
 elif page == "practice":
     screen_practice()
 elif page == "trial":
