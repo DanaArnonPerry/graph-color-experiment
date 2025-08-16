@@ -102,7 +102,7 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
     for idx, row in df.head(N_TRIALS).iterrows():
         issues = []
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
-        valid_ans = ans in {"D","B","C","D","E"}
+        valid_ans = ans in {"A","B","C","D","E"}
         if not valid_ans:
             issues.append("QCorrectAnswer not in A–E")
 
@@ -224,7 +224,7 @@ def screen_trial():
     cols = st.columns([LEFT_PAD, 1, 1, 1, 1, 1, RIGHT_PAD])
 
     # סדר הכפתורים כך ש-A הכי שמאלי
-    labels = ["A", "B", "C", "D", "E"]
+    labels = ["E", "D", "C", "B", "A"]
     for idx, lab in enumerate(labels, start=1):  # עמודות 1..5 הן הכפתורים (0 ו-6 הם הריפוד)
         if cols[idx].button(lab, use_container_width=True):
             handle_response(lab); st.stop()
