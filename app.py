@@ -1,6 +1,7 @@
-# app.py
+# app.py 
 import os
 import time
+import random
 import requests
 import pandas as pd
 import streamlit as st
@@ -123,7 +124,8 @@ def load_image(path: str):
 
 def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for idx, row in df.head(N_TRIALS).iterrows():
+    # נבדוק את שורת התרגול + 40 הניסויים
+    for idx, row in df.head(N_TRIALS + 1).iterrows():
         issues = []
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
         valid_ans = ans in {"A","B","C","D","E"}
@@ -158,6 +160,44 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
             "Issues": "; ".join(issues) if issues else ""
         })
     return pd.DataFrame(rows)
+
+# ---- בניית 40 ניסויים עם ניסיון לאי-רציפות V ----
+def build_alternating_trials_strict(pool_df: pd.DataFrame, n_needed: int, admin_mode: bool = False):
+    """
+    בונה רצף באורך n_needed מתוך pool_df כך שלא יהיו שתי שורות רצופות מאותה קבוצת V.
+    כל שורה נבחרת לכל היותר פעם אחת. אם אין אפשרות לשמור על הכלל (חוסר איזון),
+    נפר אותו נקודתית ונציג אזהרת Admin בלבד.
+    """
+    groups = {}
+    for v, sub in pool_df.groupby("V"):
+        lst = sub.sample(frac=1, random_state=None).to_dict(orient="records")  # ערבוב
+        groups[v] = lst
+
+    all_vs = list(groups.keys())
+    random.shuffle(all_vs)
+
+    result = []
+    last_v = None
+    relaxed = False
+
+    for _ in range(n_needed):
+        candidates_v = [v for v in all_vs if len(groups[v]) > 0]
+        if not candidates_v:
+            break
+        non_same = [v for v in candidates_v if v != last_v]
+        chosen_v = random.choice(non_same) if non_same else candidates_v[0]
+        if not non_same:
+            relaxed = True
+        result.append(groups[chosen_v].pop(0))
+        last_v = chosen_v
+
+    if admin_mode:
+        if len(result) < n_needed:
+            st.warning(f"נבחרו {len(result)} פריטים בלבד מתוך {n_needed}. בדקי שיש 41 שורות (1 תרגול + 40 ניסויים).")
+        if relaxed:
+            st.warning("לא ניתן היה לשמור על מעבר בין קבוצות V בכל השלבים (חוסר איזון בין קבוצות).")
+
+    return result
 
 # ========= Screens =========
 def screen_welcome():
@@ -209,8 +249,17 @@ def screen_welcome():
             st.error(f"הקובץ צריך לכלול לפחות {N_TRIALS+1} שורות (1 תרגול + {N_TRIALS} ניסויים)."); return
 
         df = df.fillna("").astype({c: str for c in df.columns})
+
+        # תרגול = תמיד השורה הראשונה
         practice_item = df.iloc[0].to_dict()
-        trials = df.iloc[1:N_TRIALS+1].to_dict(orient="records")
+
+        # ניסויים = השורות 2..41 (בדיוק 40)
+        pool_df = df.iloc[1:N_TRIALS+1].copy()
+
+        # בניית 40 ניסויים באקראי עם ניסיון לאי-רציפות V
+        trials = build_alternating_trials_strict(pool_df, N_TRIALS, admin_mode=ADMIN_MODE)
+        if len(trials) < N_TRIALS:
+            st.error(f"לא ניתן היה להרכיב {N_TRIALS} ניסויים מהקובץ."); return
 
         st.session_state.df = df
         st.session_state.practice = practice_item
