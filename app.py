@@ -10,7 +10,7 @@ from io import BytesIO
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-RESPONSE_KEYS = ["E", "B", "C", "D", "E"]  # סדר לוגי
+RESPONSE_KEYS = ["A", "B", "C", "D", "E"]  # סדר לוגי
 
 # ========= Required Columns (exactly as in Colors in charts.csv) =========
 REQUIRED_COLS = [
@@ -102,7 +102,7 @@ def preflight_check(df: pd.DataFrame) -> pd.DataFrame:
     for idx, row in df.head(N_TRIALS).iterrows():
         issues = []
         ans = str(row.get("QCorrectAnswer","")).strip().upper()
-        valid_ans = ans in {"A","B","C","D","E"}
+        valid_ans = ans in {"D","B","C","D","E"}
         if not valid_ans:
             issues.append("QCorrectAnswer not in A–E")
 
