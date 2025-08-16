@@ -239,7 +239,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
         last_v = v
     return result
 
-GRAPH_WIDTH_PX = 950  # אפשר לשנות לכל מספר שתרצי
+GRAPH_WIDTH_PX = 1200  # אפשר לשנות לכל מספר שתרצי
 
 def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
