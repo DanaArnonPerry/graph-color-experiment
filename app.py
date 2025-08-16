@@ -151,51 +151,60 @@ def screen_welcome():
         st.error(f"שגיאה בקריאת הקובץ: {e}")
         st.stop()
 
-    st.write("✅ הקובץ נטען בהצלחה!")
-    st.dataframe(df.head(), use_container_width=True, hide_index=True)
+    # הודעת הצלחה בלבד (ללא טבלה כבררת מחדל)
+    st.success("הקובץ נטען בהצלחה!")
 
-    # Preflight on loaded df
-    if st.button("בדיקת תקינות (Preflight)"):
-        missing = [c for c in REQUIRED_COLS if c not in df.columns]
-        if missing:
-            st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
-        elif len(df) < N_TRIALS:
-            st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
-        else:
-            rep = preflight_check(df)
-            bad = rep[(~rep["ValidAnswer"]) | (~rep["ImageExists"])]
-            st.success("בדיקת תקינות הושלמה.")
-            with st.expander("דו״ח Preflight"):
-                st.dataframe(rep, use_container_width=True, hide_index=True)
-            if len(bad) > 0:
-                st.warning("נמצאו בעיות בחלק מהשורות הראשונות. מומלץ לתקן לפני הרצה.")
-            st.download_button(
-                "הורדת דו״ח תקינות (CSV)",
-                data=rep.to_csv(index=False, encoding="utf-8-sig"),
-                file_name="preflight_report.csv",
-                mime="text/csv"
-            )
+    # תצוגה מקדימה אופציונלית (למפתחים/בדיקה)
+    with st.expander("תצוגה מקדימה (אופציונלי)"):
+        show_preview = st.checkbox("הצג 5 שורות ראשונות", value=False)
+        if show_preview:
+            st.dataframe(df.head(), use_container_width=True, hide_index=True)
 
-    # Start experiment
-    if st.button("המשך"):
-        missing = [c for c in REQUIRED_COLS if c not in df.columns]
-        if missing:
-            st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
-            return
-        if len(df) < N_TRIALS:
-            st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
-            return
+    # כפתורים: Preflight + המשך
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        if st.button("בדיקת תקינות (Preflight)"):
+            missing = [c for c in REQUIRED_COLS if c not in df.columns]
+            if missing:
+                st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
+            elif len(df) < N_TRIALS:
+                st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
+            else:
+                rep = preflight_check(df)
+                bad = rep[(~rep["ValidAnswer"]) | (~rep["ImageExists"])]
+                st.success("בדיקת תקינות הושלמה.")
+                with st.expander("דו״ח Preflight"):
+                    st.dataframe(rep, use_container_width=True, hide_index=True)
+                if len(bad) > 0:
+                    st.warning("נמצאו בעיות בחלק מהשורות הראשונות. מומלץ לתקן לפני הרצה.")
+                st.download_button(
+                    "הורדת דו״ח תקינות (CSV)",
+                    data=rep.to_csv(index=False, encoding="utf-8-sig"),
+                    file_name="preflight_report.csv",
+                    mime="text/csv"
+                )
 
-        df = df.fillna("").astype({c: str for c in df.columns})
-        trials = df.iloc[:N_TRIALS].to_dict(orient="records")
+    with c2:
+        if st.button("המשך"):
+            missing = [c for c in REQUIRED_COLS if c not in df.columns]
+            if missing:
+                st.error("חסרות עמודות בקובץ: " + ", ".join(missing))
+                return
+            if len(df) < N_TRIALS:
+                st.error(f"הקובץ מכיל פחות מ-{N_TRIALS} שורות.")
+                return
 
-        st.session_state.df = df
-        st.session_state.trials = trials
-        st.session_state.i = 0
-        st.session_state.t_start = None
-        st.session_state.results = []
-        st.session_state.page = "trial"
-        st.rerun()
+            df = df.fillna("").astype({c: str for c in df.columns})
+            trials = df.iloc[:N_TRIALS].to_dict(orient="records")
+
+            st.session_state.df = df
+            st.session_state.trials = trials
+            st.session_state.i = 0
+            st.session_state.t_start = None
+            st.session_state.results = []
+            st.session_state.page = "trial"
+            st.rerun()
+
 
 def screen_trial():
     if st.session_state.t_start is None:
