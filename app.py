@@ -28,10 +28,10 @@ REQUIRED_COLS = ["ID", "ImageFileName", "QuestionText", "QCorrectAnswer"]
 # --- Admin UI toggle via URL (?admin=1) ---
 def _admin_ui_enabled() -> bool:
     try:
-        # Streamlit 1.25+:
+        # Streamlit החדשים
         return (st.query_params.get("admin") == "1")
     except Exception:
-        # גרסאות ישנות:
+        # תאימות לאחור
         return (st.experimental_get_query_params().get("admin", ["0"])[0] == "1")
 
 
@@ -69,8 +69,50 @@ st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפ�
 st.markdown(
     """
 <style>
+/* RTL בסיסי + פונטים */
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
+
+/* רדיו אופקי – מרכז וריווח נעים, עובד גם במובייל */
+div.stRadio > div[role="radiogroup"]{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* כל אפשרות כ'כפתור' קטן */
+div.stRadio > div[role="radiogroup"] label{
+  border:1px solid #d0d7de;
+  border-radius:12px;
+  padding:10px 16px;
+  min-width:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+  cursor:pointer;
+}
+
+/* ריחוף */
+div.stRadio > div[role="radiogroup"] label:hover{
+  background:#f6f8fa;
+}
+
+/* הסתרת העיגול – משאירים רק את ה'כפתור' */
+div.stRadio input[type="radio"]{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+/* מצב נבחר */
+div.stRadio > div[role="radiogroup"] label:has(input[type="radio"]:checked){
+  background:#e6f0ff;
+  border-color:#80b3ff;
+  box-shadow:0 0 0 2px rgba(128,179,255,.25) inset;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -97,8 +139,12 @@ init_state()
 
 # ========= Admin PIN =========
 def is_admin(show_ui: bool = False):
-    """מחזיר האם מנהל מחובר. מציג UI ב-sidebar רק אם show_ui=True."""
-    if show_ui:
+    """
+    מחזיר האם מנהל/ת מחובר/ת.
+    UI בסיידבר יוצג רק אם show_ui=True או אם נכנסו עם ?admin=1.
+    """
+    show = show_ui or _admin_ui_enabled()
+    if show:
         with st.sidebar:
             if LOGO_PATH:
                 st.image(LOGO_PATH, use_container_width=True)
@@ -311,7 +357,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
         on_timeout()
         st.stop()
 
-    # ---- בחירה אופקית (עובד טוב גם במובייל) ----
+    # בחירה אופקית (עובד נהדר גם במובייל)
     key_suffix = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
     choice = st.radio(
         "בחר/י תשובה",
@@ -352,6 +398,7 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
         )
     except Exception:
         return ""
+
 
 # ========= Screens =========
 def screen_welcome():
@@ -475,7 +522,7 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # קביעה פעם אחת אם את במצב מנהלת
+    # קביעה פעם אחת אם את במצב מנהלת (ללא UI אלא אם נכנסת עם ?admin=1)
     admin = is_admin()
 
     # שמירה ל-Sheets חד־פעמית
@@ -494,15 +541,15 @@ def screen_end():
     else:
         st.success("התשובות נשלחו בהצלחה ✅")
 
-   # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
-st.markdown(
-    f"""
-    <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
-        <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
+    st.markdown(
+        f"""
+        <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
+            <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # ===== לוגו לחיץ לאתר =====
     if LOGO_PATH and WEBSITE_URL:
