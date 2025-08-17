@@ -34,7 +34,7 @@ USER_PHOTO_CANDIDATES = [
     "images/DanaSherlok.png", "images/DanaSherlok.jpg",
     "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
 ]
-WEBSITE_URL = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
+WEBSITE_URL = "http://www.2dpoint.co.il" # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
 
 def _first_existing(paths):
     for p in paths:
