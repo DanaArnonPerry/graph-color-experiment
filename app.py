@@ -475,19 +475,17 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # מציגים UI של מנהל רק אם הגענו עם ?admin=1
-    admin = is_admin(show_ui=_admin_ui_enabled())
-    # קריאה אחת ל-is_admin
+    # קביעה פעם אחת אם את במצב מנהלת
     admin = is_admin()
 
-    # שמירה ל-Google Sheets – חד-פעמית; למשתתפים מציגים רק הודעה כללית
+    # שמירה ל-Sheets חד־פעמית
     if not st.session_state.saved_to_sheets and not df.empty:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
             st.session_state.saved_to_sheets = True
             st.success("התשובות נשלחו בהצלחה ✅")
             if admin:
-                st.caption("נשמר ל-Google Sheets (נראה רק למנהל/ת).")
+                st.caption("נשמר ל-Google Sheets (למנהל/ת בלבד).")
         except Exception as e:
             if admin:
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
@@ -496,17 +494,17 @@ def screen_end():
     else:
         st.success("התשובות נשלחו בהצלחה ✅")
 
-  # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
-st.markdown(
-    f"""
-    <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
-        <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
+    st.markdown(
+        f"""
+        <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
+            <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # ===== לוגו לחיץ אל האתר =====
+    # ===== לוגו לחיץ לאתר =====
     if LOGO_PATH and WEBSITE_URL:
         html = _file_to_base64_html_img_link(LOGO_PATH, WEBSITE_URL, width_px=140)
         if html:
@@ -516,7 +514,7 @@ st.markdown(
     elif WEBSITE_URL:
         st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
 
-    # אזור מנהל בלבד: הורדת CSV + קישור ישיר לגיליון
+    # אזור מנהלת בלבד
     if admin:
         st.download_button(
             "הורדת תוצאות (CSV)",
