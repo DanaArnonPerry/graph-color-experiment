@@ -62,30 +62,6 @@ def find_first_existing_file(paths: List[str]) -> Optional[str]:
     return None
 
 
-# We can remove the ResponseTimer class since we're using direct timing
-# class ResponseTimer:
-#     """Handles timing for trial responses"""
-#     
-#     def __init__(self, timeout_seconds: int):
-#         self.timeout = timeout_seconds
-#         self.start_time = time.time()
-#     
-#     @property
-#     def elapsed_seconds(self) -> float:
-#         """Get elapsed time in seconds"""
-#         return time.time() - self.start_time
-#     
-#     @property
-#     def remaining_seconds(self) -> int:
-#         """Get remaining time in seconds (integer)"""
-#         return max(0, self.timeout - int(self.elapsed_seconds))
-#     
-#     @property
-#     def is_expired(self) -> bool:
-#         """Check if timer has expired"""
-#         return self.elapsed_seconds >= self.timeout
-
-
 class SessionManager:
     """Centralized session state management"""
     
@@ -159,6 +135,7 @@ class AdminManager:
                     if AdminManager._validate_pin(pin):
                         st.session_state.is_admin = True
                         st.success("מנהל מחובר ✅")
+                        st.rerun()
                     else:
                         st.error("PIN שגוי")
             else:
@@ -255,34 +232,11 @@ class GoogleSheetsManager:
         except (KeyError, AttributeError):
             pass
 
-        # Fallback to flat structure
-        keys = [
-            "type", "project_id", "private_key_id", "private_key",
-            "client_email", "client_id", "auth_uri", "token_uri",
-            "auth_provider_x509_cert_url", "client_x509_cert_url",
-            "universe_domain",
-        ]
-        
-        sa_info = {}
-        missing_keys = []
-        
-        for key in keys:
-            try:
-                value = st.secrets[key]
-                if value:  # Only add non-empty values
-                    sa_info[key] = value
-                else:
-                    missing_keys.append(key)
-            except (KeyError, AttributeError):
-                missing_keys.append(key)
-        
-        # Check if we have minimum required keys
-        required_keys = ["type", "project_id", "private_key", "client_email"]
-        if not all(key in sa_info for key in required_keys):
-            missing_required = [key for key in required_keys if key not in sa_info]
-            raise RuntimeError(f"חסרים מפתחות נדרשים ב-Service Account: {missing_required}")
-        
-        return sa_info
+        # If that fails, give a clear error message
+        raise RuntimeError(
+            "לא נמצאה הגדרת service_account ב-Secrets. "
+            "אנא ודאי שיש לך סקשן [service_account] עם כל השדות הנדרשים."
+        )
 
     @staticmethod
     @st.cache_resource
@@ -344,7 +298,8 @@ class GoogleSheetsManager:
             
         except Exception as e:
             st.warning(f"שגיאה בקבלת מספר נבדק: {e}")
-            return int(time.time())  # Fallback to timestamp
+            # Return timestamp-based fallback
+            return int(time.time() % 100000)  # Last 5 digits of timestamp
 
     @staticmethod
     def save_results_to_sheet(results_df: pd.DataFrame, sheet_id: str, worksheet_name: str) -> None:
@@ -514,9 +469,10 @@ def show_welcome_screen() -> None:
         try:
             sequence = GoogleSheetsManager.get_next_participant_sequence(config.GSHEET_ID)
             st.session_state.participant_id = f"S{sequence:05d}"
-        except Exception:
+        except Exception as e:
             # Fallback to timestamp-based ID if Google Sheets unavailable
-            st.session_state.participant_id = f"S{int(time.time())}"
+            st.warning(f"שגיאה בחיבור לגוגל Sheets: {e}")
+            st.session_state.participant_id = f"S{int(time.time() % 100000):05d}"
 
     # Load and validate experiment data
     experiment_data = load_experiment_data()
@@ -636,20 +592,19 @@ def show_end_screen() -> None:
 
     results_df = pd.DataFrame(st.session_state.results)
 
-    # Save to Google Sheets (attempt only, don't show errors to regular users)
+    # Save to Google Sheets (attempt only, show errors appropriately)
     try:
         GoogleSheetsManager.save_results_to_sheet(
             results_df, 
             config.GSHEET_ID, 
             config.GSHEET_WORKSHEET_NAME
         )
-        st.caption("התוצאות נשמרו בהצלחה ✅")
+        st.success("התוצאות נשמרו בהצלחה ✅")
     except Exception as e:
         if AdminManager.is_admin():
             st.error(f"נכשלה שמירה ל-Google Sheets: {e}")
         else:
-            # Don't show error to regular users - save will be handled in background
-            pass
+            st.warning("יתכן שהתוצאות לא נשמרו. צרי קשר עם החוקרת.")
 
     # Admin-only features
     if AdminManager.is_admin():
