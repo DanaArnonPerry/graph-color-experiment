@@ -237,8 +237,8 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
         last_v = v
     return result
 
-# -------- גרף: הגדרת רוחב מקסימלי וחכמת מרכז --------
-GRAPH_MAX_WIDTH_PX = 1500  # מקסימום רוחב תצוגה (התאימי לטעמך)
+# -------- גרף: הגדרת רוחב מקסימלי ומרכז --------
+GRAPH_MAX_WIDTH_PX = 1500  # מקסימום רוחב תצוגה
 
 def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
@@ -248,17 +248,22 @@ def _render_graph_block(title_html, question_text, image_file):
     if img is None:
         return
 
-    # נבחר רוחב מטרה: לא לעבור את המקסימום ולא לעבור את רוחב הקובץ עצמו
-    target_w = min(GRAPH_MAX_WIDTH_PX, img.width)
+    target_w = min(GRAPH_MAX_WIDTH_PX, img.width)  # אל תחרג מגודל התמונה/מקסימום
 
-    # מציגים בעמודה מרכזית כדי שהגרף יהיה ממורכז ויפה
+    # מציג בעמודה מרכזית כדי למרכז את הגרף
     left, mid, right = st.columns([1, 6, 1])
     with mid:
         st.image(img, width=target_w)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
+    # ודאי שיש t_start בטוח לשימוש
+    t_start = st.session_state.get("t_start")
+    if t_start is None:
+        t_start = time.time()
+        st.session_state["t_start"] = t_start
+
     # חישוב זמן שנותר
-    elapsed = time.time() - (st.session_state.t_start or time.time())
+    elapsed = time.time() - t_start
     remain = max(0, timeout_sec - int(elapsed))
 
     # אם הזמן נגמר – נמשיך הלאה
@@ -333,27 +338,31 @@ def screen_welcome():
         st.rerun()
 
 def screen_practice():
-    if st.session_state.t_start is None:
-        st.session_state.t_start = time.time()
+    # ודאי ש-t_start קיים למסך התרגול
+    if st.session_state.get("t_start") is None:
+        st.session_state["t_start"] = time.time()
+
     t = st.session_state.practice
     title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def on_timeout():
-        st.session_state.t_start = None
-        st.session_state.page = "trial"
+        st.session_state["t_start"] = None
+        st.session_state["page"] = "trial"
         st.rerun()
 
     def on_press(_):
-        st.session_state.t_start = None
-        st.session_state.page = "trial"
+        st.session_state["t_start"] = None
+        st.session_state["page"] = "trial"
         st.rerun()
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_trial():
-    if st.session_state.t_start is None:
-        st.session_state.t_start = time.time()
+    # ודאי ש-t_start קיים למסך השאלות
+    if st.session_state.get("t_start") is None:
+        st.session_state["t_start"] = time.time()
+
     i = st.session_state.i
     t = st.session_state.trials[i]
 
@@ -373,19 +382,20 @@ def screen_trial():
                 "RT_sec": round(rt_sec, 3),
             }
         )
-        st.session_state.t_start = None
+        st.session_state["t_start"] = None
         if st.session_state.i + 1 < len(st.session_state.trials):
             st.session_state.i += 1
             st.rerun()
         else:
-            st.session_state.page = "end"
+            st.session_state["page"] = "end"
             st.rerun()
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
 
     def on_press(key):
-        rt = time.time() - (st.session_state.t_start or time.time())
+        t_start = st.session_state.get("t_start") or time.time()
+        rt = time.time() - t_start
         correct = key.strip().upper() == str(t["QCorrectAnswer"]).strip().upper()
         finish_with(resp_key=key.strip().upper(), rt_sec=rt, correct=correct)
 
