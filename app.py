@@ -88,8 +88,9 @@ def is_admin():
             st.image(LOGO_PATH, use_container_width=True)
         st.markdown("**🔐 אזור מנהל**")
         if not st.session_state.is_admin:
-            pin = st.text_input("הכנסי PIN:", type="password")
-            if st.button("כניסה"):
+            # הוספתי key כדי לייצב את הווידג'ט
+            pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin")
+            if st.button("כניסה", key="admin_login_btn"):
                 admin_pin = None
                 try:
                     admin_pin = st.secrets["admin"].get("pin")
@@ -105,6 +106,7 @@ def is_admin():
         else:
             st.success("מנהל מחובר ✅")
     return st.session_state.is_admin
+
 
 # ========= Data =========
 @st.cache_data
