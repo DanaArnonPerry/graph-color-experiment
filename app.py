@@ -15,11 +15,15 @@ from google.oauth2 import service_account
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-DATA_PATH = "data/colors_in_charts.csv"   # הקובץ שלך עם העמודות כולל ImageFileName
+DATA_PATH = "data/colors_in_charts.csv"
 
 # מזהה הגיליון ו-worksheet לתוצאות
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
 GSHEET_WORKSHEET_NAME = "Results"
+
+# עמודות נדרשות מינימליות בקובץ ה-CSV
+REQUIRED_COLS = ["ID", "ImageFileName", "QuestionText", "QCorrectAnswer"]
+# אם קיימת עמודת V, נשתמש בה לאיזון הרצף; אם לא – נסתדר בלעדיה
 
 # ========= (Optional) Brand assets =========
 LOGO_CANDIDATES = [
@@ -32,19 +36,17 @@ USER_PHOTO_CANDIDATES = [
 ]
 WEBSITE_URL = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
 
-
 def _first_existing(paths):
     for p in paths:
         if os.path.exists(p):
             return p
     return None
 
-
 LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
+st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
 st.markdown(
     """
 <style>
@@ -69,10 +71,6 @@ def init_state():
     ss.setdefault("participant_id", "")
     ss.setdefault("run_start_iso", "")
     ss.setdefault("is_admin", False)
-    # דגלים נגד כפילויות
-    ss.setdefault("awaiting_response", False)  # האם מחכים לתשובה בטרייל הנוכחי
-    ss.setdefault("saved_to_sheets", False)    # האם כבר נשמר למסך הסיום
-
 
 init_state()
 
@@ -110,6 +108,10 @@ def load_data():
         df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
     df = df.dropna(how="all").fillna("")
     df = df.astype({c: str for c in df.columns})
+    # בדיקת עמודות נדרשות
+    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    if missing:
+        raise ValueError(f"בעיית עמודות בקובץ הנתונים: חסרות {', '.join(missing)}")
     return df
 
 # ========= Google Sheets helpers =========
@@ -142,7 +144,6 @@ def _read_service_account_from_secrets() -> dict:
         raise RuntimeError("Service Account לא נמצא ב-secrets. ודאי שהגדרת [service_account] או מפתחות SA בטופ-לבל.")
     return sa
 
-
 @st.cache_resource
 def _gs_client():
     sa_info = _read_service_account_from_secrets()
@@ -155,7 +156,6 @@ def _gs_client():
     )
     return gspread.authorize(creds)
 
-
 def _ensure_headers(ws, expected_headers):
     """ודאי שתהיה שורת כותרת נכונה; אם חסרה/שגויה – נעדכן את השורה הראשונה."""
     current = ws.get_all_values()
@@ -166,7 +166,6 @@ def _ensure_headers(ws, expected_headers):
     first_row = current[0]
     if first_row != headers:
         ws.update("1:1", [headers])
-
 
 def get_next_participant_seq(sheet_id: str) -> int:
     """
@@ -191,6 +190,15 @@ def get_next_participant_seq(sheet_id: str) -> int:
     meta.update("A2", str(nxt))
     return nxt
 
+def _ensure_participant_id():
+    """מזהה נבדק אוטומטי מאחורי הקלעים (לא מוצג)."""
+    if st.session_state.participant_id:
+        return
+    try:
+        seq = get_next_participant_seq(GSHEET_ID)
+        st.session_state.participant_id = f"S{seq:05d}"
+    except Exception:
+        st.session_state.participant_id = f"S{int(time.time())}"
 
 def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
     gc = _gs_client()
@@ -203,45 +211,14 @@ def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: 
             rows=str(max(len(df) + 10, 1000)),
             cols=str(len(df.columns) + 5),
         )
-
     _ensure_headers(ws, df.columns)
-
     if not df.empty:
         ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
 
 # ========= Utils =========
-def _resolve_image_path(rel_path: str) -> str:
-    """מחזיר נתיב תקין לתמונה מתוך CSV (ImageFileName).
-       תומך בנתיב יחסי כמו 'images/Chart1CL.PNG' או בקישור מלא/נתיב מוחלט."""
-    if not rel_path:
-        return rel_path
-    # URL / מוחלט
-    if rel_path.startswith(("http://", "https://")) or os.path.isabs(rel_path):
-        return rel_path
-
-    # נסה כפי שהוא (יחסי לשורש הפרויקט)
-    if os.path.exists(rel_path):
-        return rel_path
-
-    # נסה מתוך תקיית ה-data (ה-CSV יושב שם)
-    data_dir = os.path.dirname(DATA_PATH) or "."
-    candidate = os.path.join(data_dir, rel_path)  # data/images/Chart1CL.PNG
-    if os.path.exists(candidate):
-        return candidate
-
-    # fallback: data/<basename>
-    candidate2 = os.path.join(data_dir, os.path.basename(rel_path))
-    if os.path.exists(candidate2):
-        return candidate2
-
-    # לא נמצא – נחזיר המקורי (Streamlit ינסה וכשייכשל לא יציג)
-    return rel_path
-
-
 def load_image(path: str):
     if not path:
         return None
-    # קאש מקומי לסשן
     cache = st.session_state.image_cache
     if path in cache:
         return cache[path]
@@ -257,112 +234,118 @@ def load_image(path: str):
     except Exception:
         return None
 
-
 def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
-    """מנסה להימנע מ-V זהה פעמיים ברצף; אם אין איזון — ייתכן רצף."""
-    groups = {
-        v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
-        for v, sub in pool_df.groupby("V")
-    }
-    vs = list(groups.keys())
-    random.shuffle(vs)
-    result, last_v = [], None
-    for _ in range(n_needed):
-        candidates = [v for v in vs if groups[v]]
-        if not candidates:
-            break
-        non_same = [v for v in candidates if v != last_v] or candidates
-        v = random.choice(non_same)
-        result.append(groups[v].pop(0))
-        last_v = v
-    return result
+    """אם קיימת עמודת V – ננסה להימנע מ-V זהה פעמיים ברצף; אחרת – דגימה אקראית."""
+    if "V" in pool_df.columns:
+        groups = {
+            v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
+            for v, sub in pool_df.groupby("V")
+        }
+        vs = list(groups.keys())
+        random.shuffle(vs)
+        result, last_v = [], None
+        for _ in range(n_needed):
+            candidates = [v for v in vs if groups[v]]
+            if not candidates:
+                break
+            non_same = [v for v in candidates if v != last_v] or candidates
+            v = random.choice(non_same)
+            result.append(groups[v].pop(0))
+            last_v = v
+        # אם לא הגיע ל- n_needed (למשל קצרים) – נשלים אקראית מהשאר
+        if len(result) < n_needed:
+            remain_df = pool_df[~pool_df.index.isin(pd.Index([pool_df.index[0] for _ in []]))]
+        return result[:n_needed] if len(result) >= n_needed else (result + pool_df.sample(n=n_needed-len(result), replace=False).to_dict(orient="records"))
+    else:
+        # בלי V: דגימה אקראית של n_needed
+        if len(pool_df) < n_needed:
+            # אם יש פחות שורות מהנדרש – ניקח כולן
+            return pool_df.sample(frac=1, random_state=None).to_dict(orient="records")
+        return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
 
+# -------- גרף: הגדרת רוחב מקסימלי ומרכוז --------
+GRAPH_MAX_WIDTH_PX = 1500  # מקסימום רוחב תצוגה
 
 def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
-
-    resolved = _resolve_image_path(image_file)
-    img = load_image(resolved)
-    if img is not None:
-        # עמודה מרכזית כדי למרכז את התמונה
-        left, mid, right = st.columns([1, 6, 1])
-        with mid:
-            st.image(img, use_container_width=True)
-    else:
-        st.warning("תמונה לא נמצאה.")
-
+    img = load_image(image_file)
+    if img is None:
+        return
+    target_w = min(GRAPH_MAX_WIDTH_PX, img.width)
+    left, mid, right = st.columns([1, 6, 1])
+    with mid:
+        st.image(img, width=target_w)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
-    """מציג כפתורים + טיימר, ומגן מכפילויות הודות ל-awaiting_response."""
-    if not st.session_state.get("awaiting_response", False):
-        return
-
+    # חישוב זמן שנותר
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    # טיימאאוט — פעם אחת בלבד
-    if elapsed >= timeout_sec and st.session_state.awaiting_response:
-        st.session_state.awaiting_response = False
+    # אם הזמן נגמר – נמשיך הלאה
+    if elapsed >= timeout_sec:
         on_timeout()
         st.stop()
 
-    # כפתורי תשובה: A הכי שמאלי
+    # כפתורי התשובה (עם ריווח בצדדים) — A הכי שמאלי
     cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
-    trial_index = st.session_state.i
-    start_key = int(st.session_state.t_start or 0)
     for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
-        if cols[idx].button(lab, key=f"resp_{trial_index}_{lab}_{start_key}", use_container_width=True):
-            if st.session_state.awaiting_response:
-                st.session_state.awaiting_response = False
-                on_press(lab)
-                st.stop()
+        if cols[idx].button(lab, use_container_width=True):
+            on_press(lab)
+            st.stop()
 
-    # הטיימר – מתחת לאפשרויות
+    # הטיימר מתחת לאפשרויות
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
         f"<b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
 
-    # רענון כל עוד מחכים לתשובה
+    # רענון פעם בשנייה
     time.sleep(1)
     st.rerun()
 
-
 # ========= Screens =========
 def screen_welcome():
-    st.title("ניסוי גרפים")
-    st.write(
+    st.title("ניסוי בזיכרון חזותי של גרפים 📊")
+    st.markdown(
         """
-**הנחיות:**  
-יוצגו לך 40 גרפים. בכל מסך עליך לזהות את העמודה עם הערך הנמוך או הגבוה ביותר (לפי השאלה).  
-יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
+**שלום וברוכ/ה הבא/ה לניסוי**  
+
+במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר בגרף.
+
+חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
+
+**איך עונים?**  
+לוחצים על האות המתאימה מתחת לגרף **A / B / C / D / E**.
+
+לפני תחילת הניסוי, תוצג **שאלת תרגול אחת** (לא נשמרת בתוצאות).
+
+כדי להתחיל – לחצו על **המשך לתרגול**.
 """
     )
 
-    # מזהה נבדק נוצר מאחורי הקלעים (לא מוצג)
-    if not st.session_state.participant_id:
-        try:
-            seq = get_next_participant_seq(GSHEET_ID)
-            st.session_state.participant_id = f"S{seq:010d}"
-        except Exception:
-            st.session_state.participant_id = f"S{int(time.time())}"
-
-    # טעינת הקובץ + המשך
     if not os.path.exists(DATA_PATH):
         st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
         st.stop()
-    df = load_data()
 
-    if st.button("המשך"):
+    # נטען כבר כאן כדי להתריע מוקדם על חסרים/שמות עמודות
+    try:
+        df = load_data()
+    except Exception as e:
+        st.error(str(e))
+        st.stop()
+
+    if st.button("המשך לתרגול"):
+        # הקצאת מזהה נבדק אוטומטית ושקטה
+        _ensure_participant_id()
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
         # תרגול = תמיד השורה הראשונה
         practice_item = df.iloc[0].to_dict()
 
-        # ניסויים = 40 השורות הבאות (עם ניסיון לאזן קבוצות V)
-        pool_df = df.iloc[1 : 1 + N_TRIALS].copy()
+        # ניסויים = 40 השורות הבאות
+        pool_df = df.iloc[1: 1 + N_TRIALS].copy()
         trials = build_alternating_trials(pool_df, N_TRIALS)
 
         st.session_state.df = df
@@ -371,18 +354,14 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
-        st.session_state.saved_to_sheets = False
         st.session_state.page = "practice"
         st.rerun()
-
 
 def screen_practice():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
-        st.session_state.awaiting_response = True
-
     t = st.session_state.practice
-    title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
+    title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def on_timeout():
@@ -397,16 +376,13 @@ def screen_practice():
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
-
 def screen_trial():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
-        st.session_state.awaiting_response = True
-
     i = st.session_state.i
     t = st.session_state.trials[i]
 
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
     def finish_with(resp_key, rt_sec, correct):
@@ -440,21 +416,21 @@ def screen_trial():
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
-
 def screen_end():
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
 
     df = pd.DataFrame(st.session_state.results)
 
-    # שמירה ל-Google Sheets – חד-פעמית
-    if not st.session_state.saved_to_sheets and not df.empty:
-        try:
-            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
-            st.session_state.saved_to_sheets = True
-        except Exception as e:
-            st.info(f"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}")
+    # שמירה ל-Google Sheets בלבד
+    try:
+        append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
+    except Exception as e:
+        if is_admin():
+            st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
+        else:
+            st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
 
     # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
