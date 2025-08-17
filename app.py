@@ -461,6 +461,8 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
+    # מציגים UI של מנהל רק אם הגענו עם ?admin=1
+    admin = is_admin(show_ui=_admin_ui_enabled())
     # קריאה אחת ל-is_admin
     admin = is_admin()
 
