@@ -456,21 +456,23 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
+    # 🔑 קריאה אחת בלבד ל-is_admin ושימוש במשתנה לאורך הפונקציה
+    admin = is_admin()
+
     # שמירה ל-Google Sheets – חד-פעמית; למשתתפים מציגים רק הודעה כללית
     if not st.session_state.saved_to_sheets and not df.empty:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
             st.session_state.saved_to_sheets = True
             st.success("התשובות נשלחו בהצלחה ✅")
-            if is_admin():
+            if admin:
                 st.caption("נשמר ל-Google Sheets (למנהל/ת בלבד).")
         except Exception as e:
-            if is_admin():
+            if admin:
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
             else:
                 st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
     else:
-        # לא תוצג לעולם הודעת “כבר נשמר”; רק הודעת הצלחה כללית
         st.success("התשובות נשלחו בהצלחה ✅")
 
     # ===== תמונת שרלוק מגיטהאב =====
@@ -492,7 +494,7 @@ def screen_end():
         st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
 
     # אזור מנהל בלבד: הורדת CSV + קישור ישיר לגיליון
-    if is_admin():
+    if admin:
         st.download_button(
             "הורדת תוצאות (CSV)",
             data=df.to_csv(index=False, encoding="utf-8-sig"),
@@ -504,6 +506,7 @@ def screen_end():
             f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
             type="primary",
         )
+
 
 # ========= Router =========
 page = st.session_state.page
