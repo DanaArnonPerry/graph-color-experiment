@@ -298,41 +298,45 @@ def _render_graph_block(title_html, question_text, image_file):
         st.image(img, width=target_w)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
-    # מציגים כפתורים וטיימר רק אם מחכים לתשובה
+    # מציגים רק אם מחכים לתשובה
     if not st.session_state.get("awaiting_response", False):
         return
 
-    # חישוב זמן שנותר
+    # טיימר
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    # אם הזמן נגמר – פעולה חד-פעמית
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         st.session_state.awaiting_response = False
         on_timeout()
         st.stop()
 
-    # כפתורי התשובה (עם ריווח בצדדים) — A הכי שמאלי
-    cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
-    trial_index = st.session_state.i
-    start_key = int(st.session_state.t_start or 0)
-    for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
-        if cols[idx].button(lab, key=f"resp_{trial_index}_{lab}_{start_key}", use_container_width=True):
-            if st.session_state.awaiting_response:  # הגנה נוספת
-                st.session_state.awaiting_response = False
-                on_press(lab)
-                st.stop()
+    # ---- בחירה אופקית (עובד טוב גם במובייל) ----
+    key_suffix = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
+    choice = st.radio(
+        "בחר/י תשובה",
+        ["A", "B", "C", "D", "E"],
+        index=None,                    # בלי ברירת מחדל
+        horizontal=True,               # אופקי
+        label_visibility="collapsed",  # בלי כותרת
+        key=f"choice_{key_suffix}",
+    )
 
-    # הטיימר מתחת לאפשרויות
+    if choice and st.session_state.awaiting_response:
+        st.session_state.awaiting_response = False
+        on_press(choice)
+        st.stop()
+
+    # טיימר מוצג מתחת
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
         f"<b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
 
-    # רענון פעם בשנייה כל עוד מחכים
     time.sleep(1)
     st.rerun()
+
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
