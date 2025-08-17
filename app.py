@@ -71,6 +71,9 @@ def init_state():
     ss.setdefault("participant_id", "")
     ss.setdefault("run_start_iso", "")
     ss.setdefault("is_admin", False)
+    # *** אנטי-כפילויות ***
+    ss.setdefault("awaiting_response", False)  # נרשם true בתחילת כל מסך תרגול/טרייל; false אחרי תשובה/טיימאאוט
+    ss.setdefault("saved_to_sheets", False)    # true לאחר שמירה למסך הסיום
 
 init_state()
 
@@ -252,14 +255,14 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
             v = random.choice(non_same)
             result.append(groups[v].pop(0))
             last_v = v
-        # אם לא הגיע ל- n_needed (למשל קצרים) – נשלים אקראית מהשאר
+        # השלמה אקראית אם חסר
         if len(result) < n_needed:
-            remain_df = pool_df[~pool_df.index.isin(pd.Index([pool_df.index[0] for _ in []]))]
-        return result[:n_needed] if len(result) >= n_needed else (result + pool_df.sample(n=n_needed-len(result), replace=False).to_dict(orient="records"))
+            extra = pool_df.sample(n=min(n_needed - len(result), len(pool_df)), replace=False).to_dict(orient="records")
+            result += extra
+        return result[:n_needed]
     else:
-        # בלי V: דגימה אקראית של n_needed
-        if len(pool_df) < n_needed:
-            # אם יש פחות שורות מהנדרש – ניקח כולן
+        # בלי V: דגימה אקראית של n_needed (או כל מה שיש)
+        if len(pool_df) <= n_needed:
             return pool_df.sample(frac=1, random_state=None).to_dict(orient="records")
         return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
 
@@ -278,21 +281,30 @@ def _render_graph_block(title_html, question_text, image_file):
         st.image(img, width=target_w)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
+    # *** אנטי-כפילויות: מציגים כפתורים וטיימר רק אם מחכים לתשובה ***
+    if not st.session_state.get("awaiting_response", False):
+        return
+
     # חישוב זמן שנותר
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    # אם הזמן נגמר – נמשיך הלאה
-    if elapsed >= timeout_sec:
+    # אם הזמן נגמר – נבצע פעם אחת בלבד
+    if elapsed >= timeout_sec and st.session_state.awaiting_response:
+        st.session_state.awaiting_response = False
         on_timeout()
         st.stop()
 
     # כפתורי התשובה (עם ריווח בצדדים) — A הכי שמאלי
     cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
+    trial_index = st.session_state.i
+    start_key = int(st.session_state.t_start or 0)
     for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
-        if cols[idx].button(lab, use_container_width=True):
-            on_press(lab)
-            st.stop()
+        if cols[idx].button(lab, key=f"resp_{trial_index}_{lab}_{start_key}", use_container_width=True):
+            if st.session_state.awaiting_response:  # הגנה נוספת
+                st.session_state.awaiting_response = False
+                on_press(lab)
+                st.stop()
 
     # הטיימר מתחת לאפשרויות
     st.markdown(
@@ -301,7 +313,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
         unsafe_allow_html=True,
     )
 
-    # רענון פעם בשנייה
+    # רענון פעם בשנייה כל עוד מחכים
     time.sleep(1)
     st.rerun()
 
@@ -354,12 +366,15 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
+        st.session_state.saved_to_sheets = False  # *** איפוס שמירה למסך הסיום ***
         st.session_state.page = "practice"
         st.rerun()
 
 def screen_practice():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
+        st.session_state.awaiting_response = True  # *** מחכים לתשובה ***
+
     t = st.session_state.practice
     title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
     _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
@@ -379,6 +394,8 @@ def screen_practice():
 def screen_trial():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
+        st.session_state.awaiting_response = True  # *** מחכים לתשובה ***
+
     i = st.session_state.i
     t = st.session_state.trials[i]
 
@@ -422,15 +439,19 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # שמירה ל-Google Sheets בלבד
-    try:
-        append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
-    except Exception as e:
-        if is_admin():
-            st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
-        else:
-            st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
+    # *** שמירה ל-Google Sheets – חד-פעמית ***
+    if not st.session_state.saved_to_sheets and not df.empty:
+        try:
+            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+            st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
+            st.session_state.saved_to_sheets = True
+        except Exception as e:
+            if is_admin():
+                st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
+            else:
+                st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
+    elif st.session_state.saved_to_sheets:
+        st.caption("התוצאות כבר נשמרו ל-Google Sheets.")
 
     # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
