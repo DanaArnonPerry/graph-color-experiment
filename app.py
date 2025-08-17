@@ -2,6 +2,7 @@
 import os
 import time
 import random
+import base64
 import requests
 import pandas as pd
 import streamlit as st
@@ -23,7 +24,6 @@ GSHEET_WORKSHEET_NAME = "Results"
 
 # עמודות נדרשות מינימליות בקובץ ה-CSV
 REQUIRED_COLS = ["ID", "ImageFileName", "QuestionText", "QCorrectAnswer"]
-# אם קיימת עמודת V, נשתמש בה לאיזון הרצף; אם לא – נסתדר בלעדיה
 
 # ========= (Optional) Brand assets =========
 LOGO_CANDIDATES = [
@@ -34,7 +34,11 @@ USER_PHOTO_CANDIDATES = [
     "images/DanaSherlok.png", "images/DanaSherlok.jpg",
     "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
 ]
-WEBSITE_URL = "http://www.2dpoint.co.il" # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
+WEBSITE_URL = "http://www.2dpoint.co.il"  # קישור אתר במסך הסיום
+
+# תמונת שרלוק מתוך Github (עדכני URL אם שם/נתיב שונים)
+SHERLOCK_GITHUB_URL = "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/images/DanaSherlok.png"
+SHERLOCK_IMG_WIDTH = 160  # רוחב תצוגה לתמונת שרלוק במסך הסיום
 
 def _first_existing(paths):
     for p in paths:
@@ -71,9 +75,9 @@ def init_state():
     ss.setdefault("participant_id", "")
     ss.setdefault("run_start_iso", "")
     ss.setdefault("is_admin", False)
-    # *** אנטי-כפילויות ***
-    ss.setdefault("awaiting_response", False)  # נרשם true בתחילת כל מסך תרגול/טרייל; false אחרי תשובה/טיימאאוט
-    ss.setdefault("saved_to_sheets", False)    # true לאחר שמירה למסך הסיום
+    # אנטי-כפילויות
+    ss.setdefault("awaiting_response", False)  # מחכים לתשובה בסבב הנוכחי
+    ss.setdefault("saved_to_sheets", False)    # נשמר כבר למסך הסיום
 
 init_state()
 
@@ -111,19 +115,17 @@ def load_data():
         df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
     df = df.dropna(how="all").fillna("")
     df = df.astype({c: str for c in df.columns})
+
     # בדיקת עמודות נדרשות
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
         raise ValueError(f"בעיית עמודות בקובץ הנתונים: חסרות {', '.join(missing)}")
+
     return df
 
 # ========= Google Sheets helpers =========
 def _read_service_account_from_secrets() -> dict:
-    """
-    תומך בשני פורמטים של secrets:
-    1) סעיף [service_account] (מומלץ)
-    2) מפתחות SA שטוחים בראש הקובץ + [admin]
-    """
+    """תומך גם ב-[service_account] וגם במפתחות SA בטופ-לבל."""
     try:
         sa = dict(st.secrets["service_account"])
         if sa:
@@ -171,10 +173,7 @@ def _ensure_headers(ws, expected_headers):
         ws.update("1:1", [headers])
 
 def get_next_participant_seq(sheet_id: str) -> int:
-    """
-    קורא/מגדיל מונה בגיליון 'Meta' (תא A2). אם אינו קיים – ייווצר.
-    מחזיר את המספר הבא (1, 2, 3 ...).
-    """
+    """מונה רץ ב־'Meta'!A2 (נוצר אוטומטית אם לא קיים)."""
     gc = _gs_client()
     sh = gc.open_by_key(sheet_id)
     try:
@@ -238,7 +237,7 @@ def load_image(path: str):
         return None
 
 def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
-    """אם קיימת עמודת V – ננסה להימנע מ-V זהה פעמיים ברצף; אחרת – דגימה אקראית."""
+    """אם קיימת עמודת V – ננסה לא לחזור עליה פעמיים רצוף; אחרת – דגימה אקראית."""
     if "V" in pool_df.columns:
         groups = {
             v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
@@ -255,13 +254,14 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
             v = random.choice(non_same)
             result.append(groups[v].pop(0))
             last_v = v
-        # השלמה אקראית אם חסר
         if len(result) < n_needed:
-            extra = pool_df.sample(n=min(n_needed - len(result), len(pool_df)), replace=False).to_dict(orient="records")
+            extra = pool_df.sample(
+                n=min(n_needed - len(result), len(pool_df)),
+                replace=False
+            ).to_dict(orient="records")
             result += extra
         return result[:n_needed]
     else:
-        # בלי V: דגימה אקראית של n_needed (או כל מה שיש)
         if len(pool_df) <= n_needed:
             return pool_df.sample(frac=1, random_state=None).to_dict(orient="records")
         return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
@@ -281,7 +281,7 @@ def _render_graph_block(title_html, question_text, image_file):
         st.image(img, width=target_w)
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
-    # *** אנטי-כפילויות: מציגים כפתורים וטיימר רק אם מחכים לתשובה ***
+    # מציגים כפתורים וטיימר רק אם מחכים לתשובה
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -289,7 +289,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    # אם הזמן נגמר – נבצע פעם אחת בלבד
+    # אם הזמן נגמר – פעולה חד-פעמית
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         st.session_state.awaiting_response = False
         on_timeout()
@@ -316,6 +316,21 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     # רענון פעם בשנייה כל עוד מחכים
     time.sleep(1)
     st.rerun()
+
+# ===== Helper: clickable logo via base64 =====
+def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
+    try:
+        ext = os.path.splitext(path)[1].lower()
+        mime = "image/png" if ext == ".png" else "image/jpeg"
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        return (
+            f"<a href='{href}' target='_blank'>"
+            f"<img src='data:{mime};base64,{b64}' style='width:{width_px}px; border:0;'/>"
+            f"</a>"
+        )
+    except Exception:
+        return ""
 
 # ========= Screens =========
 def screen_welcome():
@@ -366,14 +381,14 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
-        st.session_state.saved_to_sheets = False  # *** איפוס שמירה למסך הסיום ***
+        st.session_state.saved_to_sheets = False  # איפוס לביטול כפילויות במסך הסיום
         st.session_state.page = "practice"
         st.rerun()
 
 def screen_practice():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
-        st.session_state.awaiting_response = True  # *** מחכים לתשובה ***
+        st.session_state.awaiting_response = True  # מחכים לתשובה
 
     t = st.session_state.practice
     title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
@@ -394,7 +409,7 @@ def screen_practice():
 def screen_trial():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
-        st.session_state.awaiting_response = True  # *** מחכים לתשובה ***
+        st.session_state.awaiting_response = True  # מחכים לתשובה
 
     i = st.session_state.i
     t = st.session_state.trials[i]
@@ -439,21 +454,42 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # *** שמירה ל-Google Sheets – חד-פעמית ***
+    # שמירה ל-Google Sheets – חד-פעמית; למשתתפים מציגים רק הודעה כללית
     if not st.session_state.saved_to_sheets and not df.empty:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
             st.session_state.saved_to_sheets = True
+            st.success("התשובות נשלחו בהצלחה ✅")
+            if is_admin():
+                st.caption("נשמר ל-Google Sheets (למנהל/ת בלבד).")
         except Exception as e:
             if is_admin():
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
             else:
-                st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
-    elif st.session_state.saved_to_sheets:
-        st.caption("התוצאות כבר נשמרו ל-Google Sheets.")
+                st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
+    else:
+        # לא תוצג לעולם הודעת “כבר נשמר”; רק הודעת הצלחה כללית
+        st.success("התשובות נשלחו בהצלחה ✅")
 
-    # אזור מנהל בלבד: הורדת CSV + קישור
+    # ===== תמונת שרלוק מגיטהאב =====
+    try:
+        cols = st.columns([1, 1, 1])
+        with cols[1]:
+            st.image(SHERLOCK_GITHUB_URL, width=SHERLOCK_IMG_WIDTH)
+    except Exception:
+        pass
+
+    # ===== לוגו לחיץ אל האתר =====
+    if LOGO_PATH and WEBSITE_URL:
+        html = _file_to_base64_html_img_link(LOGO_PATH, WEBSITE_URL, width_px=140)
+        if html:
+            st.markdown(f"<div style='text-align:center; margin-top:10px;'>{html}</div>", unsafe_allow_html=True)
+        else:
+            st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+    elif WEBSITE_URL:
+        st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+
+    # אזור מנהל בלבד: הורדת CSV + קישור ישיר לגיליון
     if is_admin():
         st.download_button(
             "הורדת תוצאות (CSV)",
@@ -466,17 +502,6 @@ def screen_end():
             f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
             type="primary",
         )
-
-    # חתימת מותג עדינה (אופציונלי)
-    cols = st.columns([1, 1, 1])
-    with cols[1]:
-        if USER_PHOTO_PATH:
-            st.image(USER_PHOTO_PATH, width=120)
-        if WEBSITE_URL:
-            st.markdown(
-                f"<div style='text-align:center; margin-top:8px;'><a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a></div>",
-                unsafe_allow_html=True,
-            )
 
 # ========= Router =========
 page = st.session_state.page
