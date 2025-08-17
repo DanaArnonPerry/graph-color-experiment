@@ -86,30 +86,32 @@ def init_state():
 init_state()
 
 # ========= Admin PIN =========
-def is_admin():
-    with st.sidebar:
-        if LOGO_PATH:
-            st.image(LOGO_PATH, use_container_width=True)
-        st.markdown("**🔐 אזור מנהל**")
-        if not st.session_state.is_admin:
-            # keys ייחודיים למניעת StreamlitDuplicateElementId
-            pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin")
-            if st.button("כניסה", key="admin_login_btn"):
-                admin_pin = None
-                try:
-                    admin_pin = st.secrets["admin"].get("pin")
-                except Exception:
-                    pass
-                if not admin_pin:
-                    st.error("לא מוגדר PIN (admin.pin) ב-Secrets.")
-                elif str(pin).strip() == str(admin_pin).strip():
-                    st.session_state.is_admin = True
-                    st.success("מנהל מחובר ✅")
-                else:
-                    st.error("PIN שגוי")
-        else:
-            st.success("מנהל מחובר ✅")
+def is_admin(show_ui: bool = False):
+    """מחזיר האם מנהל מחובר. מציג UI ב-sidebar רק אם show_ui=True."""
+    if show_ui:
+        with st.sidebar:
+            if LOGO_PATH:
+                st.image(LOGO_PATH, use_container_width=True)
+            st.markdown("**🔐 אזור מנהל**")
+            if not st.session_state.is_admin:
+                pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin")
+                if st.button("כניסה", key="admin_login_btn"):
+                    admin_pin = None
+                    try:
+                        admin_pin = st.secrets["admin"].get("pin")
+                    except Exception:
+                        pass
+                    if not admin_pin:
+                        st.error("לא מוגדר PIN (admin.pin) ב-Secrets.")
+                    elif str(pin).strip() == str(admin_pin).strip():
+                        st.session_state.is_admin = True
+                        st.success("מנהל מחובר ✅")
+                    else:
+                        st.error("PIN שגוי")
+            else:
+                st.success("מנהל מחובר ✅")
     return st.session_state.is_admin
+
 
 # ========= Data =========
 @st.cache_data
