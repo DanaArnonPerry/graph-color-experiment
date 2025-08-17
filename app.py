@@ -245,19 +245,9 @@ def screen_welcome():
     יוצגו לך 40 גרפים. בכל מסך עליך לזהות את העמודה עם הערך הנמוך או הגבוה ביותר (לפי השאלה).  
     יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
     """)
-
-    # מזהה נבדק אוטומטי ורץ (S00001, S00002, ...)
-    if not st.session_state.participant_id:
-        try:
-            seq = get_next_participant_seq(GSHEET_ID)
-            st.session_state.participant_id = f"S{seq:05d}"
-        except Exception as e:
-            st.warning("לא ניתן להקצות מזהה נבדק אוטומטי (בדקי הרשאות/Secrets).")
-            st.session_state.participant_id = f"S{int(time.time())}"
-
-    st.info(f"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}")
-
-    # טעינת הקובץ + המשך
+"st.session_state.participant_id = None"
+    
+      # טעינת הקובץ + המשך
     if not os.path.exists(DATA_PATH):
         st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
     df = load_data()
