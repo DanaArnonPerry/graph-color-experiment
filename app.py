@@ -30,14 +30,19 @@ LOGO_CANDIDATES = [
     "images/Logo.png", "images/logo.png",
     "images/Logo29.10.24_B.png", "Logo.png", "Logo"
 ]
+# כולל גם fallback לכתיב הישן Sherlok
 USER_PHOTO_CANDIDATES = [
     "images/DanaSherlock.png", "images/DanaSherlock.jpg",
-    "DanaSherlock.png", "DanaSherlock.jpg", "DanaSherlock"
+    "images/DanaSherlok.png", "images/DanaSherlok.jpg",
+    "DanaSherlock.png", "DanaSherlock.jpg",
+    "DanaSherlok.png", "DanaSherlok.jpg",
 ]
 WEBSITE_URL = "http://www.2dpoint.co.il"  # קישור אתר במסך הסיום
 
-# תמונת שרלוק מתוך Github (עדכני URL אם שם/נתיב שונים)
-SHERLOCK_GITHUB_URL = "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/images/DanaSherlock.png"
+# תמונת שרלוק מתוך Github (fallback)
+SHERLOCK_GITHUB_URL = (
+    "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/images/DanaSherlock.png"
+)
 SHERLOCK_IMG_WIDTH = 160  # רוחב תצוגה לתמונת שרלוק במסך הסיום
 
 def _first_existing(paths):
@@ -78,7 +83,6 @@ def init_state():
     # אנטי-כפילויות
     ss.setdefault("awaiting_response", False)  # מחכים לתשובה בסבב הנוכחי
     ss.setdefault("saved_to_sheets", False)    # נשמר כבר למסך הסיום
-
 init_state()
 
 # ========= Admin PIN =========
@@ -88,7 +92,7 @@ def is_admin():
             st.image(LOGO_PATH, use_container_width=True)
         st.markdown("**🔐 אזור מנהל**")
         if not st.session_state.is_admin:
-            # הוספתי key כדי לייצב את הווידג'ט
+            # keys ייחודיים למניעת StreamlitDuplicateElementId
             pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin")
             if st.button("כניסה", key="admin_login_btn"):
                 admin_pin = None
@@ -106,7 +110,6 @@ def is_admin():
         else:
             st.success("מנהל מחובר ✅")
     return st.session_state.is_admin
-
 
 # ========= Data =========
 @st.cache_data
@@ -456,7 +459,7 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # 🔑 קריאה אחת בלבד ל-is_admin ושימוש במשתנה לאורך הפונקציה
+    # קריאה אחת ל-is_admin
     admin = is_admin()
 
     # שמירה ל-Google Sheets – חד-פעמית; למשתתפים מציגים רק הודעה כללית
@@ -466,7 +469,7 @@ def screen_end():
             st.session_state.saved_to_sheets = True
             st.success("התשובות נשלחו בהצלחה ✅")
             if admin:
-                st.caption("נשמר ל-Google Sheets (למנהל/ת בלבד).")
+                st.caption("נשמר ל-Google Sheets (נראה רק למנהל/ת).")
         except Exception as e:
             if admin:
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
@@ -475,11 +478,14 @@ def screen_end():
     else:
         st.success("התשובות נשלחו בהצלחה ✅")
 
-    # ===== תמונת שרלוק מגיטהאב =====
+    # ===== תמונת שרלוק: מקומי אם קיים, אחרת מגיטהאב =====
     try:
         cols = st.columns([1, 1, 1])
         with cols[1]:
-            st.image(SHERLOCK_GITHUB_URL, width=SHERLOCK_IMG_WIDTH)
+            sherlock_src = USER_PHOTO_PATH or SHERLOCK_GITHUB_URL
+            img = load_image(sherlock_src)
+            if img is not None:
+                st.image(img, width=SHERLOCK_IMG_WIDTH)
     except Exception:
         pass
 
@@ -506,7 +512,6 @@ def screen_end():
             f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
             type="primary",
         )
-
 
 # ========= Router =========
 page = st.session_state.page
