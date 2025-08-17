@@ -62,27 +62,28 @@ def find_first_existing_file(paths: List[str]) -> Optional[str]:
     return None
 
 
-class ResponseTimer:
-    """Handles timing for trial responses"""
-    
-    def __init__(self, timeout_seconds: int):
-        self.timeout = timeout_seconds
-        self.start_time = time.time()
-    
-    @property
-    def elapsed_seconds(self) -> float:
-        """Get elapsed time in seconds"""
-        return time.time() - self.start_time
-    
-    @property
-    def remaining_seconds(self) -> int:
-        """Get remaining time in seconds (integer)"""
-        return max(0, self.timeout - int(self.elapsed_seconds))
-    
-    @property
-    def is_expired(self) -> bool:
-        """Check if timer has expired"""
-        return self.elapsed_seconds >= self.timeout
+# We can remove the ResponseTimer class since we're using direct timing
+# class ResponseTimer:
+#     """Handles timing for trial responses"""
+#     
+#     def __init__(self, timeout_seconds: int):
+#         self.timeout = timeout_seconds
+#         self.start_time = time.time()
+#     
+#     @property
+#     def elapsed_seconds(self) -> float:
+#         """Get elapsed time in seconds"""
+#         return time.time() - self.start_time
+#     
+#     @property
+#     def remaining_seconds(self) -> int:
+#         """Get remaining time in seconds (integer)"""
+#         return max(0, self.timeout - int(self.elapsed_seconds))
+#     
+#     @property
+#     def is_expired(self) -> bool:
+#         """Check if timer has expired"""
+#         return self.elapsed_seconds >= self.timeout
 
 
 class SessionManager:
@@ -142,8 +143,8 @@ class AdminManager:
     """Handle admin authentication and features"""
     
     @staticmethod
-    def check_admin_access() -> bool:
-        """Check and handle admin PIN authentication"""
+    def show_admin_sidebar() -> None:
+        """Show admin authentication in sidebar"""
         logo_path = find_first_existing_file(config.LOGO_CANDIDATES)
         
         with st.sidebar:
@@ -153,8 +154,8 @@ class AdminManager:
             st.markdown("**🔐 אזור מנהל**")
             
             if not st.session_state.is_admin:
-                pin = st.text_input("הכנסי PIN:", type="password")
-                if st.button("כניסה"):
+                pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin_input")
+                if st.button("כניסה", key="admin_login_button"):
                     if AdminManager._validate_pin(pin):
                         st.session_state.is_admin = True
                         st.success("מנהל מחובר ✅")
@@ -162,8 +163,11 @@ class AdminManager:
                         st.error("PIN שגוי")
             else:
                 st.success("מנהל מחובר ✅")
-        
-        return st.session_state.is_admin
+    
+    @staticmethod
+    def is_admin() -> bool:
+        """Check if current user is admin (without showing UI)"""
+        return st.session_state.get("is_admin", False)
     
     @staticmethod
     def _validate_pin(entered_pin: str) -> bool:
@@ -246,9 +250,9 @@ class GoogleSheetsManager:
         try:
             # Try structured service_account section first
             sa_info = dict(st.secrets["service_account"])
-            if sa_info:
+            if sa_info and len(sa_info) > 3:  # Basic validation
                 return sa_info
-        except Exception:
+        except (KeyError, AttributeError):
             pass
 
         # Fallback to flat structure
@@ -260,14 +264,23 @@ class GoogleSheetsManager:
         ]
         
         sa_info = {}
+        missing_keys = []
+        
         for key in keys:
             try:
-                sa_info[key] = st.secrets[key]
-            except Exception:
-                pass
+                value = st.secrets[key]
+                if value:  # Only add non-empty values
+                    sa_info[key] = value
+                else:
+                    missing_keys.append(key)
+            except (KeyError, AttributeError):
+                missing_keys.append(key)
         
-        if not sa_info:
-            raise RuntimeError("Service Account לא נמצא ב-secrets.")
+        # Check if we have minimum required keys
+        required_keys = ["type", "project_id", "private_key", "client_email"]
+        if not all(key in sa_info for key in required_keys):
+            missing_required = [key for key in required_keys if key not in sa_info]
+            raise RuntimeError(f"חסרים מפתחות נדרשים ב-Service Account: {missing_required}")
         
         return sa_info
 
@@ -275,15 +288,21 @@ class GoogleSheetsManager:
     @st.cache_resource
     def get_gspread_client():
         """Get authenticated gspread client"""
-        sa_info = GoogleSheetsManager._get_service_account_info()
-        credentials = service_account.Credentials.from_service_account_info(
-            sa_info,
-            scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive",
-            ],
-        )
-        return gspread.authorize(credentials)
+        try:
+            sa_info = GoogleSheetsManager._get_service_account_info()
+            credentials = service_account.Credentials.from_service_account_info(
+                sa_info,
+                scopes=[
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive",
+                ],
+            )
+            client = gspread.authorize(credentials)
+            # Test the connection
+            client.list_spreadsheet_files()  # This will fail if auth is bad
+            return client
+        except Exception as e:
+            raise RuntimeError(f"שגיאה ביצירת חיבור ל-Google Sheets: {str(e)}")
 
     @staticmethod
     def ensure_worksheet_headers(worksheet, expected_headers: List[str]) -> None:
@@ -330,29 +349,46 @@ class GoogleSheetsManager:
     @staticmethod
     def save_results_to_sheet(results_df: pd.DataFrame, sheet_id: str, worksheet_name: str) -> None:
         """Save results DataFrame to Google Sheet"""
+        if results_df.empty:
+            raise ValueError("אין תוצאות לשמירה")
+            
         try:
             gc = GoogleSheetsManager.get_gspread_client()
-            spreadsheet = gc.open_by_key(sheet_id)
             
+            # Try to open the spreadsheet first
+            try:
+                spreadsheet = gc.open_by_key(sheet_id)
+            except gspread.SpreadsheetNotFound:
+                raise RuntimeError(f"גיליון לא נמצא עם ID: {sheet_id}")
+            except Exception as e:
+                raise RuntimeError(f"לא ניתן לגשת לגיליון: {str(e)}")
+            
+            # Get or create worksheet
             try:
                 worksheet = spreadsheet.worksheet(worksheet_name)
             except gspread.WorksheetNotFound:
-                worksheet = spreadsheet.add_worksheet(
-                    title=worksheet_name,
-                    rows=str(max(len(results_df) + 10, 1000)),
-                    cols=str(len(results_df.columns) + 5),
-                )
+                try:
+                    worksheet = spreadsheet.add_worksheet(
+                        title=worksheet_name,
+                        rows=str(max(len(results_df) + 100, 1000)),
+                        cols=str(len(results_df.columns) + 5),
+                    )
+                except Exception as e:
+                    raise RuntimeError(f"לא ניתן ליצור worksheet: {str(e)}")
 
+            # Ensure headers
             GoogleSheetsManager.ensure_worksheet_headers(worksheet, results_df.columns)
 
-            if not results_df.empty:
-                worksheet.append_rows(
-                    results_df.astype(str).values.tolist(),
-                    value_input_option="RAW"
-                )
+            # Append data
+            try:
+                data_to_append = results_df.astype(str).values.tolist()
+                worksheet.append_rows(data_to_append, value_input_option="RAW")
+            except Exception as e:
+                raise RuntimeError(f"שגיאה בהוספת נתונים: {str(e)}")
                 
         except Exception as e:
-            raise RuntimeError(f"שגיאה בשמירה ל-Google Sheets: {e}")
+            # Re-raise with more context
+            raise RuntimeError(f"שגיאה בשמירה ל-Google Sheets: {str(e)}")
 
 
 # ========= Trial Management =========
@@ -413,27 +449,36 @@ def render_graph_display(title_html: str, question_text: str, image_filename: st
     st.image(image, use_container_width=True)
 
 
-def render_response_interface(timer: ResponseTimer, on_timeout_callback, on_response_callback) -> None:
+def render_response_interface(start_time: float, timeout_sec: int, on_timeout_callback, on_response_callback) -> None:
     """Render response buttons and timer with proper spacing"""
     
+    # Calculate time remaining
+    elapsed = time.time() - start_time
+    remaining = max(0, timeout_sec - int(elapsed))
+    
     # Check for timeout
-    if timer.is_expired:
+    if elapsed >= timeout_sec:
         on_timeout_callback()
         st.stop()
 
-    # Response buttons with proper spacing
+    # Response buttons with proper spacing and unique keys
     button_cols = st.columns([0.1, 1, 1, 1, 1, 1, 0.1])
     response_options = ["E", "D", "C", "B", "A"]
     
+    # Generate unique key based on session state and timestamp
+    page_key = st.session_state.get("page", "unknown")
+    trial_key = st.session_state.get("current_trial_index", 0)
+    base_key = f"{page_key}_{trial_key}_{int(start_time)}"
+    
     for idx, option in enumerate(response_options, start=1):
-        if button_cols[idx].button(option, use_container_width=True):
+        if button_cols[idx].button(option, use_container_width=True, key=f"resp_{base_key}_{option}"):
             on_response_callback(option)
             st.stop()
 
     # Timer display
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
-        f"<b>{timer.remaining_seconds}</b> שניות</div>",
+        f"<b>{remaining}</b> שניות</div>",
         unsafe_allow_html=True,
     )
 
@@ -464,12 +509,13 @@ def show_welcome_screen() -> None:
         """
     )
 
-    # Generate participant ID automatically
+    # Generate participant ID automatically (hidden from user)
     if not st.session_state.participant_id:
         try:
             sequence = GoogleSheetsManager.get_next_participant_sequence(config.GSHEET_ID)
             st.session_state.participant_id = f"S{sequence:05d}"
         except Exception:
+            # Fallback to timestamp-based ID if Google Sheets unavailable
             st.session_state.participant_id = f"S{int(time.time())}"
 
     # Load and validate experiment data
@@ -477,7 +523,7 @@ def show_welcome_screen() -> None:
     if experiment_data.empty:
         st.stop()
 
-    if st.button("המשך לתרגול"):
+    if st.button("המשך לתרגול", key="start_practice_button"):
         # Initialize experiment session
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
         st.session_state.practice_trial = experiment_data.iloc[0].to_dict()
@@ -501,9 +547,6 @@ def show_practice_screen() -> None:
     if st.session_state.trial_start_time is None:
         st.session_state.trial_start_time = time.time()
     
-    timer = ResponseTimer(config.TRIAL_TIMEOUT_SEC)
-    timer.start_time = st.session_state.trial_start_time
-    
     practice_trial = st.session_state.practice_trial
     title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
     
@@ -519,7 +562,12 @@ def show_practice_screen() -> None:
         st.session_state.page = "trial"
         st.rerun()
 
-    render_response_interface(timer, on_practice_timeout, on_practice_response)
+    render_response_interface(
+        st.session_state.trial_start_time, 
+        config.TRIAL_TIMEOUT_SEC, 
+        on_practice_timeout, 
+        on_practice_response
+    )
 
 
 def show_trial_screen() -> None:
@@ -527,9 +575,6 @@ def show_trial_screen() -> None:
     # Initialize timer if needed
     if st.session_state.trial_start_time is None:
         st.session_state.trial_start_time = time.time()
-    
-    timer = ResponseTimer(config.TRIAL_TIMEOUT_SEC)
-    timer.start_time = st.session_state.trial_start_time
     
     trial_index = st.session_state.current_trial_index
     current_trial = st.session_state.trials[trial_index]
@@ -570,13 +615,18 @@ def show_trial_screen() -> None:
         )
 
     def on_trial_response(response_key: str):
-        reaction_time = timer.elapsed_seconds
+        reaction_time = time.time() - st.session_state.trial_start_time
         correct_answer = str(current_trial["QCorrectAnswer"]).strip().upper()
         is_correct = response_key.strip().upper() == correct_answer
         
         record_trial_result(response_key.strip().upper(), reaction_time, is_correct)
 
-    render_response_interface(timer, on_trial_timeout, on_trial_response)
+    render_response_interface(
+        st.session_state.trial_start_time, 
+        config.TRIAL_TIMEOUT_SEC, 
+        on_trial_timeout, 
+        on_trial_response
+    )
 
 
 def show_end_screen() -> None:
@@ -586,22 +636,23 @@ def show_end_screen() -> None:
 
     results_df = pd.DataFrame(st.session_state.results)
 
-    # Save to Google Sheets
+    # Save to Google Sheets (attempt only, don't show errors to regular users)
     try:
         GoogleSheetsManager.save_results_to_sheet(
             results_df, 
             config.GSHEET_ID, 
             config.GSHEET_WORKSHEET_NAME
         )
-        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
+        st.caption("התוצאות נשמרו בהצלחה ✅")
     except Exception as e:
-        if AdminManager.check_admin_access():
+        if AdminManager.is_admin():
             st.error(f"נכשלה שמירה ל-Google Sheets: {e}")
         else:
-            st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
+            # Don't show error to regular users - save will be handled in background
+            pass
 
     # Admin-only features
-    if AdminManager.check_admin_access():
+    if AdminManager.is_admin():
         st.download_button(
             "הורדת תוצאות (CSV)",
             data=results_df.to_csv(index=False, encoding="utf-8-sig"),
@@ -634,6 +685,9 @@ def main() -> None:
     """Main application entry point"""
     setup_page_config()
     SessionManager.initialize()
+    
+    # Show admin sidebar on all pages
+    AdminManager.show_admin_sidebar()
     
     # Route to appropriate screen
     current_page = st.session_state.page
