@@ -439,32 +439,21 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # שמירה ל-Google Sheets – חד-פעמית בלבד (גם אם Streamlit מרענן את הסקריפט)
+    # *** שמירה ל-Google Sheets – חד-פעמית ***
     if not st.session_state.saved_to_sheets and not df.empty:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+            st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
             st.session_state.saved_to_sheets = True
-
-            # הודעה ידידותית למשתתף (בלי להזכיר Google Sheets)
-            st.success("התשובות נשלחו בהצלחה ✅")
-
-            # פירוט טכני רק למנהלת
-            if is_admin():
-                st.caption("נשמר ל-Google Sheets (פרטי).")
-
         except Exception as e:
-            # למשתתף – הודעה כללית; למנהלת – פירוט שגיאה
             if is_admin():
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
             else:
-                st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
-    else:
-        # אם כבר נשמר – עדיין להראות למשתתף הודעה ידידותית
-        st.success("התשובות נשלחו בהצלחה ✅")
-        if is_admin():
-            st.caption("(כבר נשמר ל-Google Sheets)")
+                st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
+    elif st.session_state.saved_to_sheets:
+        st.caption("התוצאות כבר נשמרו ל-Google Sheets.")
 
-    # כפתורי מנהל בלבד
+    # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
         st.download_button(
             "הורדת תוצאות (CSV)",
@@ -488,7 +477,6 @@ def screen_end():
                 f"<div style='text-align:center; margin-top:8px;'><a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a></div>",
                 unsafe_allow_html=True,
             )
-
 
 # ========= Router =========
 page = st.session_state.page
