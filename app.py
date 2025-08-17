@@ -31,13 +31,13 @@ LOGO_CANDIDATES = [
     "images/Logo29.10.24_B.png", "Logo.png", "Logo"
 ]
 USER_PHOTO_CANDIDATES = [
-    "images/DanaSherlok.png", "images/DanaSherlok.jpg",
-    "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
+    "images/DanaSherlock.png", "images/DanaSherlock.jpg",
+    "DanaSherlock.png", "DanaSherlock.jpg", "DanaSherlock"
 ]
 WEBSITE_URL = "http://www.2dpoint.co.il"  # קישור אתר במסך הסיום
 
 # תמונת שרלוק מתוך Github (עדכני URL אם שם/נתיב שונים)
-SHERLOCK_GITHUB_URL = "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/images/DanaSherlok.png"
+SHERLOCK_GITHUB_URL = "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/images/DanaSherlock.png"
 SHERLOCK_IMG_WIDTH = 160  # רוחב תצוגה לתמונת שרלוק במסך הסיום
 
 def _first_existing(paths):
