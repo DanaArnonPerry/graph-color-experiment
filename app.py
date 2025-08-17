@@ -54,7 +54,7 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 # ========= Session State =========
 def init_state():
     ss = st.session_state
-    ss.setdefault("page", "welcome")     # welcome -> practice -> trial -> end
+    ss.setdefault("page", "welcome")      # welcome -> practice -> trial -> end
     ss.setdefault("df", None)
     ss.setdefault("practice", None)
     ss.setdefault("trials", None)
@@ -249,7 +249,8 @@ def _render_graph_block(title_html, question_text, image_file):
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
-    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
+
+    # קודם בודקים אם הזמן נגמר
     if elapsed >= timeout_sec:
         on_timeout(); st.stop()
 
@@ -258,16 +259,27 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
         if cols[idx].button(lab, use_container_width=True):
             on_press(lab); st.stop()
+            
+    # הטיימר מוצג מתחת לכפתורים
+    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
 
     time.sleep(1); st.rerun()
 
 # ========= Screens =========
 def screen_welcome():
-    st.title("ניסוי גרפים")
-    st.write("""
-    **הנחיות:**  
-    יוצגו לך 40 גרפים. בכל מסך עליך לזהות את העמודה עם הערך הנמוך או הגבוה ביותר (לפי השאלה).  
-    יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
+    st.title("ניסוי בזיכרון חזותי של גרפים 📊")
+    st.write(f"""
+    **שלום וברוכ/ה הבא/ה לניסוי**
+
+    במהלך הניסוי יוצגו **{N_TRIALS} גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר בגרף.
+
+    חשוב לענות מהר ככל שניתן; לאחר **{TRIAL_TIMEOUT_SEC} שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
+
+    **איך עונים?** לוחצים על האות המתאימה מתחת לגרף **A / B / C / D / E**.
+
+    לפני תחילת הניסוי, תוצג **שאלת תרגול אחת** (לא נשמרת בתוצאות).
+
+    כדי להתחיל – לחצו על **המשך לתרגול**.
     """)
 
     # מזהה נבדק אוטומטי ורץ (S00001, S00002, ...)
@@ -277,16 +289,16 @@ def screen_welcome():
             st.session_state.participant_id = f"S{seq:05d}"
         except Exception as e:
             st.warning("לא ניתן להקצות מזהה נבדק אוטומטי (בדקי הרשאות/Secrets).")
-            st.session_state.participant_id = f"S{int(time.time())}"
-
-    st.info(f"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}")
+            # Fallback ID uses random numbers to avoid collision
+            st.session_state.participant_id = f"S{int(time.time())}{random.randint(100, 999)}"
 
     # טעינת הקובץ + המשך
     if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
+        st.stop()
     df = load_data()
 
-    if st.button("המשך"):
+    if st.button("המשך לתרגול"):
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
         # תרגול = תמיד השורה הראשונה
