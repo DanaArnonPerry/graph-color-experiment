@@ -161,32 +161,8 @@ def _ensure_headers(ws, expected_headers):
     if first_row != headers:
         ws.update('1:1', [headers])  # החלפת הכותרת הקיימת
 
-def get_next_participant_seq(sheet_id: str) -> int:
-    """
-    קורא/מגדיל מונה בגיליון 'Meta' (תא A2). אם אינו קיים – ייווצר.
-    מחזיר את המספר הבא (1, 2, 3 ...).
-    """
-    gc = _gs_client()
-    sh = gc.open_by_key(sheet_id)
-    try:
-        meta = sh.worksheet('Meta')
-    except gspread.WorksheetNotFound:
-        meta = sh.add_worksheet(title='Meta', rows='2', cols='2')
-        meta.update('A1', 'counter')
-        meta.update('A2', '1')
         return 1
 
-    try:
-        cur = int(meta.acell('A2').value or '0')
-    except Exception:
-        cur = 0
-    nxt = cur + 1
-    meta.update('A2', str(nxt))
-    return nxt
-
-def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
-    gc = _gs_client()
-    sh = gc.open_by_key(sheet_id)
     try:
         ws = sh.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:
