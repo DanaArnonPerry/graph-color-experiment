@@ -494,15 +494,15 @@ def screen_end():
     else:
         st.success("התשובות נשלחו בהצלחה ✅")
 
-    # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
-    st.markdown(
-        f"""
-        <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
-            <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+   # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
+st.markdown(
+    f"""
+    <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
+        <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
     # ===== לוגו לחיץ לאתר =====
     if LOGO_PATH and WEBSITE_URL:
