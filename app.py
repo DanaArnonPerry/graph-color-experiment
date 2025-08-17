@@ -25,6 +25,16 @@ GSHEET_WORKSHEET_NAME = "Results"
 # עמודות נדרשות מינימליות בקובץ ה-CSV
 REQUIRED_COLS = ["ID", "ImageFileName", "QuestionText", "QCorrectAnswer"]
 
+# --- Admin UI toggle via URL (?admin=1) ---
+def _admin_ui_enabled() -> bool:
+    try:
+        # Streamlit 1.25+:
+        return (st.query_params.get("admin") == "1")
+    except Exception:
+        # גרסאות ישנות:
+        return (st.experimental_get_query_params().get("admin", ["0"])[0] == "1")
+
+
 # ========= (Optional) Brand assets =========
 LOGO_CANDIDATES = [
     "images/Logo.png", "images/logo.png",
