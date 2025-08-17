@@ -439,22 +439,34 @@ def screen_end():
 
     df = pd.DataFrame(st.session_state.results)
 
-    # *** שמירה ל-Google Sheets – חד-פעמית ***
-    if not st.session_state.saved_to_sheets and not df.empty:
+    # שמירה ל-Google Sheets בלבד (פעם אחת)
+    if not st.session_state.results_saved:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
-            st.session_state.saved_to_sheets = True
+            st.session_state.results_saved = True  # עדכון הדגל לאחר שמירה מוצלחת
         except Exception as e:
             if is_admin():
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
             else:
-                st.info("כרגע לא הצלחנו לשמור את התשובות ל-Google Sheets. זה יטופל מאחורי הקלעים.")
-    elif st.session_state.saved_to_sheets:
-        st.caption("התוצאות כבר נשמרו ל-Google Sheets.")
+                st.info("כרגע לא הצלחנו לשמור את התשובות. הבעיה תטופל.")
+    
+    # שינוי 2: החלפת ההודעה והוספת התמונה והקישור מתחתיה
+    st.success("הנתונים נשלחו")
+
+    # הצגת התמונה במרכז
+    if USER_PHOTO_PATH:
+        st.image(USER_PHOTO_PATH, width=140)
+
+    # הוספת הקישור לאתר מתחת לתמונה
+    if WEBSITE_URL:
+        st.markdown(
+            f"<div style='text-align:center; margin-top:8px;'><a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline; color: #007bff;'>לאתר שלי</a></div>",
+            unsafe_allow_html=True,
+        )
 
     # אזור מנהל בלבד: הורדת CSV + קישור
     if is_admin():
+        st.divider() # קו הפרדה ויזואלי
         st.download_button(
             "הורדת תוצאות (CSV)",
             data=df.to_csv(index=False, encoding="utf-8-sig"),
@@ -466,17 +478,6 @@ def screen_end():
             f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
             type="primary",
         )
-
-    # חתימת מותג עדינה (אופציונלי)
-    cols = st.columns([1, 1, 1])
-    with cols[1]:
-        if USER_PHOTO_PATH:
-            st.image(USER_PHOTO_PATH, width=120)
-        if WEBSITE_URL:
-            st.markdown(
-                f"<div style='text-align:center; margin-top:8px;'><a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a></div>",
-                unsafe_allow_html=True,
-            )
 
 # ========= Router =========
 page = st.session_state.page
