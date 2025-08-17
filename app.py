@@ -492,16 +492,15 @@ def screen_end():
     else:
         st.success("התשובות נשלחו בהצלחה ✅")
 
-    # ===== תמונת שרלוק: מקומי אם קיים, אחרת מגיטהאב =====
-    try:
-        cols = st.columns([1, 1, 1])
-        with cols[1]:
-            sherlock_src = USER_PHOTO_PATH or SHERLOCK_GITHUB_URL
-            img = load_image(sherlock_src)
-            if img is not None:
-                st.image(img, width=SHERLOCK_IMG_WIDTH)
-    except Exception:
-        pass
+  # ===== תמונת שרלוק מגיטהאב (ממורכז) =====
+st.markdown(
+    f"""
+    <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
+        <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
     # ===== לוגו לחיץ אל האתר =====
     if LOGO_PATH and WEBSITE_URL:
