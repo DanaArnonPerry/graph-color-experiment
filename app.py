@@ -1,665 +1,407 @@
 # app.py
-"""
-Visual Memory Experiment for Charts
-Improved version with better code structure, error handling, and responsive design
-"""
-
 import os
 import time
 import random
-from typing import Optional, Dict, List, Any
-from dataclasses import dataclass
-from io import BytesIO
-
 import requests
 import pandas as pd
 import streamlit as st
 from PIL import Image
+from io import BytesIO
+from datetime import datetime
 
 # Google Sheets
 import gspread
 from google.oauth2 import service_account
 
+# ========= Parameters =========
+N_TRIALS = 40
+TRIAL_TIMEOUT_SEC = 30
+DATA_PATH = "data/colors_in_charts.csv"
 
-# ========= Configuration =========
-@dataclass
-class ExperimentConfig:
-    """Central configuration for the experiment"""
-    MAX_TRIALS: int = 40
-    TRIAL_TIMEOUT_SEC: int = 30
-    DATA_PATH: str = "data/colors_in_charts.csv"
-    
-    # Google Sheets configuration
-    GSHEET_ID: str = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
-    GSHEET_WORKSHEET_NAME: str = "Results"
-    
-    # Brand assets
-    LOGO_CANDIDATES: List[str] = None
-    USER_PHOTO_CANDIDATES: List[str] = None
-    WEBSITE_URL: str = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
-    
-    def __post_init__(self):
-        if self.LOGO_CANDIDATES is None:
-            self.LOGO_CANDIDATES = [
-                "images/Logo.png", "images/logo.png",
-                "images/Logo29.10.24_B.png", "Logo.png", "Logo"
-            ]
-        if self.USER_PHOTO_CANDIDATES is None:
-            self.USER_PHOTO_CANDIDATES = [
-                "images/DanaSherlok.png", "images/DanaSherlok.jpg",
-                "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
-            ]
+# מזהה הגיליון ו-worksheet לתוצאות
+GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
+GSHEET_WORKSHEET_NAME = "Results"
 
-config = ExperimentConfig()
+# ========= (Optional) Brand assets =========
+LOGO_CANDIDATES = [
+    "images/Logo.png", "images/logo.png",
+    "images/Logo29.10.24_B.png", "Logo.png", "Logo"
+]
+USER_PHOTO_CANDIDATES = [
+    "images/DanaSherlok.png", "images/DanaSherlok.jpg",
+    "DanaSherlok.png", "DanaSherlok.jpg", "DanaSherlok"
+]
+WEBSITE_URL = ""  # קישור אתר במסך הסיום (השאירי ריק אם לא צריך)
 
-
-# ========= Utility Functions =========
-def find_first_existing_file(paths: List[str]) -> Optional[str]:
-    """Find the first existing file from a list of paths"""
-    for path in paths:
-        if os.path.exists(path):
-            return path
+def _first_existing(paths):
+    for p in paths:
+        if os.path.exists(p):
+            return p
     return None
 
-
-class SessionManager:
-    """Centralized session state management"""
-    
-    @staticmethod
-    def initialize() -> None:
-        """Initialize session state with default values"""
-        defaults = {
-            "page": "welcome",     # welcome -> practice -> trial -> end
-            "experiment_data": None,
-            "practice_trial": None,
-            "trials": None,
-            "current_trial_index": 0,
-            "trial_start_time": None,
-            "results": [],
-            "image_cache": {},
-            "participant_id": "",
-            "run_start_iso": "",
-            "is_admin": False
-        }
-        
-        for key, value in defaults.items():
-            st.session_state.setdefault(key, value)
-
+LOGO_PATH = _first_existing(LOGO_CANDIDATES)
+USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-def setup_page_config() -> None:
-    """Configure Streamlit page settings"""
-    st.set_page_config(
-        page_title="ניסוי בזיכרון חזותי של גרפים",
-        page_icon="📊",
-        layout="centered"
-    )
-    
-    # RTL styling for Hebrew
-    st.markdown(
-        """
-        <style>
-        html, body, [class*="css"] { 
-            direction: rtl; 
-            text-align: right; 
-            font-family: "Rubik","Segoe UI","Arial",sans-serif; 
-        }
-        blockquote, pre, code { 
-            direction: ltr; 
-            text-align: left; 
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+st.set_page_config(page_title="ניסוי גרפים", page_icon="📊", layout="centered")
+st.markdown("""
+<style>
+html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
+blockquote, pre, code { direction: ltr; text-align: left; }
+</style>
+""", unsafe_allow_html=True)
 
+# ========= Session State =========
+def init_state():
+    ss = st.session_state
+    ss.setdefault("page", "welcome")     # welcome -> practice -> trial -> end
+    ss.setdefault("df", None)
+    ss.setdefault("practice", None)
+    ss.setdefault("trials", None)
+    ss.setdefault("i", 0)
+    ss.setdefault("t_start", None)
+    ss.setdefault("results", [])
+    ss.setdefault("image_cache", {})
+    ss.setdefault("participant_id", "")
+    ss.setdefault("run_start_iso", "")
+    ss.setdefault("is_admin", False)
 
-# ========= Admin Functions =========
-class AdminManager:
-    """Handle admin authentication and features"""
-    
-    @staticmethod
-    def show_admin_sidebar() -> None:
-        """Show admin authentication in sidebar"""
-        logo_path = find_first_existing_file(config.LOGO_CANDIDATES)
-        
-        with st.sidebar:
-            if logo_path:
-                st.image(logo_path, use_container_width=True)
-            
-            st.markdown("**🔐 אזור מנהל**")
-            
-            if not st.session_state.is_admin:
-                pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin_input")
-                if st.button("כניסה", key="admin_login_button"):
-                    if AdminManager._validate_pin(pin):
-                        st.session_state.is_admin = True
-                        st.success("מנהל מחובר ✅")
-                        st.rerun()
-                    else:
-                        st.error("PIN שגוי")
-            else:
-                st.success("מנהל מחובר ✅")
-    
-    @staticmethod
-    def is_admin() -> bool:
-        """Check if current user is admin (without showing UI)"""
-        return st.session_state.get("is_admin", False)
-    
-    @staticmethod
-    def _validate_pin(entered_pin: str) -> bool:
-        """Validate admin PIN against secrets"""
-        try:
-            admin_pin = st.secrets["admin"].get("pin")
-            if not admin_pin:
-                st.error("לא מוגדר PIN (admin.pin) ב-Secrets.")
-                return False
-            return str(entered_pin).strip() == str(admin_pin).strip()
-        except Exception:
-            st.error("שגיאה בבדיקת PIN.")
-            return False
+init_state()
 
-
-# ========= Data Loading =========
-@st.cache_data
-def load_experiment_data() -> pd.DataFrame:
-    """Load and validate experiment data from CSV"""
-    try:
-        # Try UTF-8 first, fallback to UTF-8-BOM
-        try:
-            data = pd.read_csv(config.DATA_PATH, encoding="utf-8")
-        except UnicodeDecodeError:
-            data = pd.read_csv(config.DATA_PATH, encoding="utf-8-sig")
-        
-        # Clean and validate data
-        data = data.dropna(how="all").fillna("")
-        data = data.astype({col: str for col in data.columns})
-        
-        # Validate required columns
-        required_columns = ["ID", "QuestionText", "ImageFileName", "QCorrectAnswer", "V"]
-        missing_columns = [col for col in required_columns if col not in data.columns]
-        
-        if missing_columns:
-            raise ValueError(f"Missing required columns: {missing_columns}")
-        
-        return data
-        
-    except FileNotFoundError:
-        st.error(f"קובץ הנתונים לא נמצא: {config.DATA_PATH}")
-        return pd.DataFrame()
-    except pd.errors.EmptyDataError:
-        st.error("קובץ הנתונים ריק")
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"שגיאה בטעינת הנתונים: {e}")
-        return pd.DataFrame()
-
-
-# ========= Image Handling =========
-@st.cache_data
-def load_and_cache_image(image_path: str) -> Optional[Image.Image]:
-    """Load and cache images with proper error handling"""
-    if not image_path:
-        return None
-    
-    try:
-        if image_path.startswith(("http://", "https://")):
-            response = requests.get(image_path, timeout=10)
-            response.raise_for_status()
-            return Image.open(BytesIO(response.content)).convert("RGBA")
+# ========= Admin PIN =========
+def is_admin():
+    with st.sidebar:
+        if LOGO_PATH:
+            st.image(LOGO_PATH, use_container_width=True)
+        st.markdown("**🔐 אזור מנהל**")
+        if not st.session_state.is_admin:
+            pin = st.text_input("הכנסי PIN:", type="password")
+            if st.button("כניסה"):
+                # קרא PIN מתוך secrets: קונפיגורציית TOML: [admin] pin="1234"
+                admin_pin = None
+                try:
+                    admin_pin = st.secrets["admin"].get("pin")
+                except Exception:
+                    pass
+                if not admin_pin:
+                    st.error("לא מוגדר PIN (admin.pin) ב-Secrets.")
+                elif str(pin).strip() == str(admin_pin).strip():
+                    st.session_state.is_admin = True
+                    st.success("מנהל מחובר ✅")
+                else:
+                    st.error("PIN שגוי")
         else:
-            if not os.path.exists(image_path):
-                st.warning(f"קובץ תמונה לא נמצא: {image_path}")
-                return None
-            return Image.open(image_path).convert("RGBA")
-    except (requests.RequestException, IOError, ValueError) as e:
-        st.warning(f"שגיאה בטעינת תמונה {image_path}: {e}")
-        return None
+            st.success("מנהל מחובר ✅")
+    return st.session_state.is_admin
 
+# ========= Data =========
+@st.cache_data
+def load_data():
+    try:
+        df = pd.read_csv(DATA_PATH, encoding="utf-8")
+    except Exception:
+        df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+    df = df.dropna(how="all").fillna("")
+    df = df.astype({c: str for c in df.columns})
+    return df
 
-# ========= Google Sheets Integration =========
-class GoogleSheetsManager:
-    """Handle Google Sheets operations"""
-    
-    @staticmethod
-    def _get_service_account_info() -> Dict[str, str]:
-        """Get service account info from Streamlit secrets"""
+# ========= Google Sheets helpers =========
+
+def _read_service_account_from_secrets() -> dict:
+    """
+    תומך בשני פורמטים של secrets:
+    1) עם סעיף [service_account] (מומלץ)
+    2) מפתחות שטוחים בראש הקובץ (ללא [service_account]) + [admin]
+    """
+    # פורמט מומלץ: [service_account]
+    try:
+        sa = dict(st.secrets["service_account"])
+        if sa:
+            return sa
+    except Exception:
+        pass
+
+    # פורמט שטוח: ניקח את השדות הרלוונטיים מהטופ-לבל
+    keys = [
+        "type", "project_id", "private_key_id", "private_key",
+        "client_email", "client_id", "auth_uri", "token_uri",
+        "auth_provider_x509_cert_url", "client_x509_cert_url",
+        "universe_domain"
+    ]
+    sa = {}
+    for k in keys:
         try:
-            # Try structured service_account section first
-            sa_info = dict(st.secrets["service_account"])
-            if sa_info and len(sa_info) > 3:  # Basic validation
-                return sa_info
-        except (KeyError, AttributeError):
+            sa[k] = st.secrets[k]
+        except Exception:
             pass
+    if not sa:
+        raise RuntimeError("Service Account לא נמצא ב-secrets. ודאי שהגדרת [service_account] או מפתחות SA בטופ-לבל.")
+    return sa
 
-        # If that fails, give a clear error message
-        raise RuntimeError(
-            "לא נמצאה הגדרת service_account ב-Secrets. "
-            "אנא ודאי שיש לך סקשן [service_account] עם כל השדות הנדרשים."
+@st.cache_resource
+def _gs_client():
+    sa_info = _read_service_account_from_secrets()
+    creds = service_account.Credentials.from_service_account_info(
+        sa_info,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
+    )
+    return gspread.authorize(creds)
+
+def _ensure_headers(ws, expected_headers):
+    """ודא שתהיה שורת כותרת נכונה; אם חסרה/שגויה – נעדכן את השורה הראשונה."""
+    current = ws.get_all_values()
+    headers = list(expected_headers)
+    if not current:
+        ws.append_row(headers)
+        return
+    first_row = current[0]
+    if first_row != headers:
+        ws.update('1:1', [headers])  # החלפת הכותרת הקיימת
+
+def get_next_participant_seq(sheet_id: str) -> int:
+    """
+    קורא/מגדיל מונה בגיליון 'Meta' (תא A2). אם אינו קיים – ייווצר.
+    מחזיר את המספר הבא (1, 2, 3 ...).
+    """
+    gc = _gs_client()
+    sh = gc.open_by_key(sheet_id)
+    try:
+        meta = sh.worksheet('Meta')
+    except gspread.WorksheetNotFound:
+        meta = sh.add_worksheet(title='Meta', rows='2', cols='2')
+        meta.update('A1', 'counter')
+        meta.update('A2', '1')
+        return 1
+
+    try:
+        cur = int(meta.acell('A2').value or '0')
+    except Exception:
+        cur = 0
+    nxt = cur + 1
+    meta.update('A2', str(nxt))
+    return nxt
+
+def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
+    gc = _gs_client()
+    sh = gc.open_by_key(sheet_id)
+    try:
+        ws = sh.worksheet(worksheet_name)
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(
+            title=worksheet_name,
+            rows=str(max(len(df)+10, 1000)),
+            cols=str(len(df.columns)+5)
         )
 
-    @staticmethod
-    @st.cache_resource
-    def get_gspread_client():
-        """Get authenticated gspread client"""
-        try:
-            sa_info = GoogleSheetsManager._get_service_account_info()
-            credentials = service_account.Credentials.from_service_account_info(
-                sa_info,
-                scopes=[
-                    "https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive",
-                ],
-            )
-            client = gspread.authorize(credentials)
-            # Test the connection
-            client.list_spreadsheet_files()  # This will fail if auth is bad
-            return client
-        except Exception as e:
-            raise RuntimeError(f"שגיאה ביצירת חיבור ל-Google Sheets: {str(e)}")
+    # ודא כותרות תמיד:
+    _ensure_headers(ws, df.columns)
 
-    @staticmethod
-    def ensure_worksheet_headers(worksheet, expected_headers: List[str]) -> None:
-        """Ensure worksheet has correct headers"""
-        current_values = worksheet.get_all_values()
-        headers = list(expected_headers)
-        
-        if not current_values:
-            worksheet.append_row(headers)
-            return
-        
-        first_row = current_values[0]
-        if first_row != headers:
-            worksheet.update("1:1", [headers])
+    # הוסף שורות
+    if not df.empty:
+        ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
 
-    @staticmethod
-    def get_next_participant_sequence(sheet_id: str) -> int:
-        """Get next participant sequence number from Meta worksheet"""
-        try:
-            gc = GoogleSheetsManager.get_gspread_client()
-            spreadsheet = gc.open_by_key(sheet_id)
-            
-            try:
-                meta_worksheet = spreadsheet.worksheet("Meta")
-            except gspread.WorksheetNotFound:
-                meta_worksheet = spreadsheet.add_worksheet(title="Meta", rows="2", cols="2")
-                meta_worksheet.update("A1", "counter")
-                meta_worksheet.update("A2", "1")
-                return 1
+# ========= Utils =========
+def load_image(path: str):
+    if not path:
+        return None
+    cache = st.session_state.image_cache
+    if path in cache:
+        return cache[path]
+    try:
+        if path.startswith(("http://", "https://")):
+            r = requests.get(path, timeout=10)
+            r.raise_for_status()
+            img = Image.open(BytesIO(r.content)).convert("RGBA")
+        else:
+            img = Image.open(path).convert("RGBA")
+        cache[path] = img
+        return img
+    except Exception:
+        return None
 
-            try:
-                current_count = int(meta_worksheet.acell("A2").value or "0")
-            except (ValueError, TypeError):
-                current_count = 0
-            
-            next_count = current_count + 1
-            meta_worksheet.update("A2", str(next_count))
-            return next_count
-            
-        except Exception as e:
-            st.warning(f"שגיאה בקבלת מספר נבדק: {e}")
-            # Return timestamp-based fallback
-            return int(time.time() % 100000)  # Last 5 digits of timestamp
-
-    @staticmethod
-    def save_results_to_sheet(results_df: pd.DataFrame, sheet_id: str, worksheet_name: str) -> None:
-        """Save results DataFrame to Google Sheet"""
-        if results_df.empty:
-            raise ValueError("אין תוצאות לשמירה")
-            
-        try:
-            gc = GoogleSheetsManager.get_gspread_client()
-            
-            # Try to open the spreadsheet first
-            try:
-                spreadsheet = gc.open_by_key(sheet_id)
-            except gspread.SpreadsheetNotFound:
-                raise RuntimeError(f"גיליון לא נמצא עם ID: {sheet_id}")
-            except Exception as e:
-                raise RuntimeError(f"לא ניתן לגשת לגיליון: {str(e)}")
-            
-            # Get or create worksheet
-            try:
-                worksheet = spreadsheet.worksheet(worksheet_name)
-            except gspread.WorksheetNotFound:
-                try:
-                    worksheet = spreadsheet.add_worksheet(
-                        title=worksheet_name,
-                        rows=str(max(len(results_df) + 100, 1000)),
-                        cols=str(len(results_df.columns) + 5),
-                    )
-                except Exception as e:
-                    raise RuntimeError(f"לא ניתן ליצור worksheet: {str(e)}")
-
-            # Ensure headers
-            GoogleSheetsManager.ensure_worksheet_headers(worksheet, results_df.columns)
-
-            # Append data
-            try:
-                data_to_append = results_df.astype(str).values.tolist()
-                worksheet.append_rows(data_to_append, value_input_option="RAW")
-            except Exception as e:
-                raise RuntimeError(f"שגיאה בהוספת נתונים: {str(e)}")
-                
-        except Exception as e:
-            # Re-raise with more context
-            raise RuntimeError(f"שגיאה בשמירה ל-Google Sheets: {str(e)}")
-
-
-# ========= Trial Management =========
-def build_alternating_trials(pool_df: pd.DataFrame, n_trials: int) -> List[Dict[str, Any]]:
-    """
-    Build alternating trial sequence to avoid consecutive identical V values
-    
-    Args:
-        pool_df: DataFrame containing trial data with 'V' column for grouping
-        n_trials: Number of trials to generate
-        
-    Returns:
-        List of trial dictionaries in alternating order
-    """
-    # Group by V and shuffle each group
-    groups = {
-        v: sub_df.sample(frac=1, random_state=None).to_dict(orient="records")
-        for v, sub_df in pool_df.groupby("V")
-    }
-    
-    available_values = list(groups.keys())
-    random.shuffle(available_values)
-    
-    trials = []
-    last_v = None
-    
-    for _ in range(n_trials):
-        # Find groups that still have trials
-        available_groups = [v for v in available_values if groups[v]]
-        if not available_groups:
+def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
+    """מנסה להימנע מ-V זהה פעמיים ברצף; אם אין איזון — ייתכן רצף."""
+    groups = {v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
+              for v, sub in pool_df.groupby("V")}
+    vs = list(groups.keys())
+    random.shuffle(vs)
+    result, last_v = [], None
+    for _ in range(n_needed):
+        candidates = [v for v in vs if groups[v]]
+        if not candidates:
             break
-        
-        # Prefer different V than last trial, but use any available if needed
-        different_v_groups = [v for v in available_groups if v != last_v]
-        candidates = different_v_groups if different_v_groups else available_groups
-        
-        # Select random group and pop trial
-        selected_v = random.choice(candidates)
-        trial = groups[selected_v].pop(0)
-        trials.append(trial)
-        last_v = selected_v
-    
-    return trials
+        non_same = [v for v in candidates if v != last_v] or candidates
+        v = random.choice(non_same)
+        result.append(groups[v].pop(0))
+        last_v = v
+    return result
 
-
-# ========= UI Components =========
-def render_graph_display(title_html: str, question_text: str, image_filename: str) -> None:
-    """Render graph with responsive sizing"""
+def _render_graph_block(title_html, question_text, image_file):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
+    img = load_image(image_file)
+    if img is not None:
+        st.image(img, use_container_width=True)
 
-    image = load_and_cache_image(image_filename)
-    if image is None:
-        st.error("לא ניתן להציג את הגרף")
-        return
-
-    # Use responsive container width for better display on all devices
-    st.image(image, use_container_width=True)
-
-
-def render_response_interface(start_time: float, timeout_sec: int, on_timeout_callback, on_response_callback) -> None:
-    """Render response buttons and timer with proper spacing"""
-    
-    # Calculate time remaining
-    elapsed = time.time() - start_time
-    remaining = max(0, timeout_sec - int(elapsed))
-    
-    # Check for timeout
+def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
+    elapsed = time.time() - (st.session_state.t_start or time.time())
+    remain = max(0, timeout_sec - int(elapsed))
+    st.write(f"⏳ זמן שנותר: **{remain}** שניות")
     if elapsed >= timeout_sec:
-        on_timeout_callback()
-        st.stop()
+        on_timeout(); st.stop()
 
-    # Response buttons with proper spacing and unique keys
-    button_cols = st.columns([0.1, 1, 1, 1, 1, 1, 0.1])
-    response_options = ["E", "D", "C", "B", "A"]
-    
-    # Generate unique key based on session state and timestamp
-    page_key = st.session_state.get("page", "unknown")
-    trial_key = st.session_state.get("current_trial_index", 0)
-    base_key = f"{page_key}_{trial_key}_{int(start_time)}"
-    
-    for idx, option in enumerate(response_options, start=1):
-        if button_cols[idx].button(option, use_container_width=True, key=f"resp_{base_key}_{option}"):
-            on_response_callback(option)
-            st.stop()
+    # רווחי צד + 5 כפתורים; A הכי שמאלי
+    cols = st.columns([0.10, 1, 1, 1, 1, 1, 0.10])
+    for idx, lab in enumerate(["A", "B", "C", "D", "E"], start=1):
+        if cols[idx].button(lab, use_container_width=True):
+            on_press(lab); st.stop()
 
-    # Timer display
-    st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
-        f"<b>{remaining}</b> שניות</div>",
-        unsafe_allow_html=True,
-    )
+    time.sleep(1); st.rerun()
 
-    # Auto-refresh every second
-    time.sleep(1)
-    st.rerun()
+# ========= Screens =========
+def screen_welcome():
+    st.title("ניסוי גרפים")
+    st.write("""
+    **הנחיות:**  
+    יוצגו לך 40 גרפים. בכל מסך עליך לזהות את העמודה עם הערך הנמוך או הגבוה ביותר (לפי השאלה).  
+    יש להשיב מהר ככל האפשר. אם לא תהיה תגובה ב־30 שניות, עוברים אוטומטית לגרף הבא.
+    """)
 
-
-# ========= Screen Functions =========
-def show_welcome_screen() -> None:
-    """Display welcome screen with instructions"""
-    st.title("ניסוי בזיכרון חזותי של גרפים 📊")
-    
-    st.markdown(
-        """
-        **שלום וברוכ/ה הבא/ה לניסוי**  
-
-        במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר בגרף.
-
-        חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
-
-        **איך עונים?**  
-        לוחצים על האות המתאימה מתחת לגרף **A / B / C / D / E**.
-
-        לפני תחילת הניסוי, תוצג **שאלת תרגול אחת** (לא נשמרת בתוצאות).
-
-        כדי להתחיל – לחצו על **המשך לתרגול**.
-        """
-    )
-
-    # Generate participant ID automatically (hidden from user)
+    # מזהה נבדק אוטומטי ורץ (S00001, S00002, ...)
     if not st.session_state.participant_id:
         try:
-            sequence = GoogleSheetsManager.get_next_participant_sequence(config.GSHEET_ID)
-            st.session_state.participant_id = f"S{sequence:05d}"
+            seq = get_next_participant_seq(GSHEET_ID)
+            st.session_state.participant_id = f"S{seq:05d}"
         except Exception as e:
-            # Fallback to timestamp-based ID if Google Sheets unavailable
-            st.warning(f"שגיאה בחיבור לגוגל Sheets: {e}")
-            st.session_state.participant_id = f"S{int(time.time() % 100000):05d}"
+            st.warning("לא ניתן להקצות מזהה נבדק אוטומטי (בדקי הרשאות/Secrets).")
+            st.session_state.participant_id = f"S{int(time.time())}"
 
-    # Load and validate experiment data
-    experiment_data = load_experiment_data()
-    if experiment_data.empty:
-        st.stop()
+    st.info(f"**מזהה נבדק הוקצה אוטומטית:** {st.session_state.participant_id}")
 
-    if st.button("המשך לתרגול", key="start_practice_button"):
-        # Initialize experiment session
+    # טעינת הקובץ + המשך
+    if not os.path.exists(DATA_PATH):
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
+    df = load_data()
+
+    if st.button("המשך"):
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
-        st.session_state.practice_trial = experiment_data.iloc[0].to_dict()
-        
-        # Prepare trials (skip first row used for practice)
-        pool_data = experiment_data.iloc[1: 1 + config.MAX_TRIALS].copy()
-        st.session_state.trials = build_alternating_trials(pool_data, config.MAX_TRIALS)
-        
-        # Reset trial state
-        st.session_state.experiment_data = experiment_data
-        st.session_state.current_trial_index = 0
-        st.session_state.trial_start_time = None
+
+        # תרגול = תמיד השורה הראשונה
+        practice_item = df.iloc[0].to_dict()
+
+        # ניסויים = 40 השורות הבאות (עם ניסיון לאזן קבוצות V)
+        pool_df = df.iloc[1:1+N_TRIALS].copy()
+        trials = build_alternating_trials(pool_df, N_TRIALS)
+
+        st.session_state.df = df
+        st.session_state.practice = practice_item
+        st.session_state.trials = trials
+        st.session_state.i = 0
+        st.session_state.t_start = None
         st.session_state.results = []
         st.session_state.page = "practice"
         st.rerun()
 
+def screen_practice():
+    if st.session_state.t_start is None:
+        st.session_state.t_start = time.time()
+    t = st.session_state.practice
+    title_html = "<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>תרגול</div>"
+    _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
-def show_practice_screen() -> None:
-    """Display practice trial screen"""
-    # Initialize timer if needed
-    if st.session_state.trial_start_time is None:
-        st.session_state.trial_start_time = time.time()
-    
-    practice_trial = st.session_state.practice_trial
-    title_html = "<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול</div>"
-    
-    render_graph_display(title_html, practice_trial["QuestionText"], practice_trial["ImageFileName"])
+    def on_timeout():
+        st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
+    def on_press(_):
+        st.session_state.t_start = None; st.session_state.page = "trial"; st.rerun()
 
-    def on_practice_timeout():
-        st.session_state.trial_start_time = None
-        st.session_state.page = "trial"
-        st.rerun()
+    _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
-    def on_practice_response(_):
-        st.session_state.trial_start_time = None
-        st.session_state.page = "trial"
-        st.rerun()
+def screen_trial():
+    if st.session_state.t_start is None:
+        st.session_state.t_start = time.time()
+    i = st.session_state.i
+    t = st.session_state.trials[i]
 
-    render_response_interface(
-        st.session_state.trial_start_time, 
-        config.TRIAL_TIMEOUT_SEC, 
-        on_practice_timeout, 
-        on_practice_response
-    )
+    # כותרת קטנה
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:center; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
+    _render_graph_block(title_html, t["QuestionText"], t["ImageFileName"])
 
-
-def show_trial_screen() -> None:
-    """Display main trial screen"""
-    # Initialize timer if needed
-    if st.session_state.trial_start_time is None:
-        st.session_state.trial_start_time = time.time()
-    
-    trial_index = st.session_state.current_trial_index
-    current_trial = st.session_state.trials[trial_index]
-    
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {trial_index + 1}</div>"
-    
-    render_graph_display(title_html, current_trial["QuestionText"], current_trial["ImageFileName"])
-
-    def record_trial_result(response_key: Optional[str], reaction_time: float, is_correct: bool):
-        """Record trial result and advance to next trial or end"""
-        result = {
+    def finish_with(resp_key, rt_sec, correct):
+        st.session_state.results.append({
             "ParticipantID": st.session_state.participant_id,
             "RunStartISO": st.session_state.run_start_iso,
-            "TrialIndex": trial_index + 1,
-            "ID": current_trial["ID"],
-            "ResponseKey": response_key or "",
-            "QCorrectAnswer": current_trial["QCorrectAnswer"],
-            "Accuracy": int(is_correct),
-            "RT_sec": round(reaction_time, 3),
-        }
-        
-        st.session_state.results.append(result)
-        st.session_state.trial_start_time = None
-        
-        # Advance to next trial or end
-        if trial_index + 1 < len(st.session_state.trials):
-            st.session_state.current_trial_index += 1
-            st.rerun()
+            "TrialIndex": st.session_state.i + 1,
+            "ID": t["ID"],
+            "ResponseKey": resp_key or "",
+            "QCorrectAnswer": t["QCorrectAnswer"],
+            "Accuracy": int(correct),
+            "RT_sec": round(rt_sec, 3)
+        })
+        st.session_state.t_start = None
+        if st.session_state.i + 1 < len(st.session_state.trials):
+            st.session_state.i += 1; st.rerun()
         else:
-            st.session_state.page = "end"
-            st.rerun()
+            st.session_state.page = "end"; st.rerun()
 
-    def on_trial_timeout():
-        record_trial_result(
-            response_key=None,
-            reaction_time=float(config.TRIAL_TIMEOUT_SEC),
-            is_correct=False
-        )
+    def on_timeout():
+        finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
 
-    def on_trial_response(response_key: str):
-        reaction_time = time.time() - st.session_state.trial_start_time
-        correct_answer = str(current_trial["QCorrectAnswer"]).strip().upper()
-        is_correct = response_key.strip().upper() == correct_answer
-        
-        record_trial_result(response_key.strip().upper(), reaction_time, is_correct)
+    def on_press(key):
+        rt = time.time() - (st.session_state.t_start or time.time())
+        correct = (key.strip().upper() == str(t["QCorrectAnswer"]).strip().upper())
+        finish_with(resp_key=key.strip().upper(), rt_sec=rt, correct=correct)
 
-    render_response_interface(
-        st.session_state.trial_start_time, 
-        config.TRIAL_TIMEOUT_SEC, 
-        on_trial_timeout, 
-        on_trial_response
-    )
+    _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
-
-def show_end_screen() -> None:
-    """Display end screen with results and thanks"""
+def screen_end():
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
 
-    results_df = pd.DataFrame(st.session_state.results)
+    df = pd.DataFrame(st.session_state.results)
 
-    # Save to Google Sheets (attempt only, show errors appropriately)
+    # שמירה ל-Google Sheets בלבד
     try:
-        GoogleSheetsManager.save_results_to_sheet(
-            results_df, 
-            config.GSHEET_ID, 
-            config.GSHEET_WORKSHEET_NAME
-        )
-        st.success("התוצאות נשמרו בהצלחה ✅")
+        append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+        st.caption("התוצאות נשמרו ל-Google Sheets (פרטי).")
     except Exception as e:
-        if AdminManager.is_admin():
-            st.error(f"נכשלה שמירה ל-Google Sheets: {e}")
-        else:
-            st.warning("יתכן שהתוצאות לא נשמרו. צרי קשר עם החוקרת.")
+        st.info(f"לא נשמר ל-Google Sheets (בדקו secrets/שיתוף): {e}")
 
-    # Admin-only features
-    if AdminManager.is_admin():
+    # אזור מנהל בלבד: הורדת CSV + קישור
+    if is_admin():
         st.download_button(
             "הורדת תוצאות (CSV)",
-            data=results_df.to_csv(index=False, encoding="utf-8-sig"),
-            file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':', '-')}.csv",
-            mime="text/csv",
+            data=df.to_csv(index=False, encoding="utf-8-sig"),
+            file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
+            mime="text/csv"
         )
         st.link_button(
             "פתח/י את Google Sheet",
-            f"https://docs.google.com/spreadsheets/d/{config.GSHEET_ID}/edit",
-            type="primary",
+            f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
+            type="primary"
         )
 
-    # Optional branding section
-    branding_cols = st.columns([1, 1, 1])
-    with branding_cols[1]:
-        user_photo_path = find_first_existing_file(config.USER_PHOTO_CANDIDATES)
-        if user_photo_path:
-            st.image(user_photo_path, width=120)
-        if config.WEBSITE_URL:
+    # חתימת מותג עדינה (אופציונלי)
+    cols = st.columns([1,1,1])
+    with cols[1]:
+        if USER_PHOTO_PATH:
+            st.image(USER_PHOTO_PATH, width=120)
+        if WEBSITE_URL:
             st.markdown(
                 f"<div style='text-align:center; margin-top:8px;'>"
-                f"<a href='{config.WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>"
-                f"לאתר שלי</a></div>",
-                unsafe_allow_html=True,
+                f"<a href='{WEBSITE_URL}' target='_blank' style='text-decoration:underline;'>לאתר שלי</a>"
+                f"</div>", unsafe_allow_html=True
             )
 
-
-# ========= Main Application Router =========
-def main() -> None:
-    """Main application entry point"""
-    setup_page_config()
-    SessionManager.initialize()
-    
-    # Show admin sidebar on all pages
-    AdminManager.show_admin_sidebar()
-    
-    # Route to appropriate screen
-    current_page = st.session_state.page
-    
-    if current_page == "welcome":
-        show_welcome_screen()
-    elif current_page == "practice":
-        show_practice_screen()
-    elif current_page == "trial":
-        show_trial_screen()
-    elif current_page == "end":
-        show_end_screen()
-    else:
-        # Fallback to welcome if invalid page
-        st.session_state.page = "welcome"
-        st.rerun()
-
-
-if __name__ == "__main__":
-    main()
+# ========= Router =========
+page = st.session_state.page
+if page == "welcome":
+    screen_welcome()
+elif page == "practice":
+    screen_practice()
+elif page == "trial":
+    screen_trial()
+else:
+    screen_end()
