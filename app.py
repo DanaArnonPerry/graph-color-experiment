@@ -94,7 +94,7 @@ div.stButton > button {
 }
 
 /* קרב את הגרף לכפתורים */
-div[data-testid="stPlotlyChart"] { margin-bottom: 8px !important; }
+div[data-testid="stPlotlyChart"] { margin-bottom: 20px !important; }
 
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"] { display: none !important; }
