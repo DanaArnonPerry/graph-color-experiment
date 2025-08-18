@@ -357,11 +357,11 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
         st.stop()
 
     # --- כפתורים אמיתיים, בשורה, ממורכזים מתחת לגרף ---
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)  # רווח קטן
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)  # רווח קטן
     outer = st.columns([1, 6, 1])  # עמודת אמצע רחבה
     with outer[1]:
         row = st.columns(5)        # חמישה כפתורים בשורה אחת
-        labels = ["A", "B", "C", "D", "E"]
+        labels = ["E", "D", "C", "B", "A"]
         unique = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
         for i, lab in enumerate(labels):
             if row[i].button(lab, use_container_width=True, key=f"btn_{lab}_{unique}"):
