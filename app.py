@@ -361,7 +361,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     key_suffix = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
     choice = st.radio(
         "בחר/י תשובה",
-        ["A", "B", "C", "D", "E"],
+        ["E", "D", "C", "B", "A"],
         index=None,                    # בלי ברירת מחדל
         horizontal=True,               # אופקי
         label_visibility="collapsed",  # בלי כותרת
