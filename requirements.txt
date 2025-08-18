@@ -4,3 +4,4 @@ Pillow
 requests
 gspread
 google-auth
+plotly>=5.20.0
