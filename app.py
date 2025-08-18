@@ -11,11 +11,16 @@ from io import BytesIO
 
 # === NEW: ensure Plotly is available ===
 try:
-    import plotly.graph_objects as go  # גרף בקוד, בלי אייקון הרחבה
+# -*- coding: utf-8 -*-
+# ...
+# === Ensure Plotly is available ===
+try:
+    import plotly.graph_objects as go
 except ModuleNotFoundError:
     import sys, subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly>=5.20.0"])
     import plotly.graph_objects as go
+
 
 # Google Sheets
 import gspread
