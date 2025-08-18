@@ -344,6 +344,10 @@ def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
 
+/* קרב את הגרף לכפתורים (מוריד מרווח מתחת לגרף) */
+div[data-testid="stPlotlyChart"] { margin-bottom: 6px !important; }
+
+   
     # רווח לפני הגרף (מוריד את הגרף למטה ומתן יותר רווח לכותרת)
     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
