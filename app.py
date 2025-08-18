@@ -9,18 +9,13 @@ import streamlit as st
 from PIL import Image
 from io import BytesIO
 
-# === NEW: ensure Plotly is available ===
-try:
-# -*- coding: utf-8 -*-
-# ...
-# === Ensure Plotly is available ===
+# --- Ensure Plotly is available (safe import) ---
 try:
     import plotly.graph_objects as go
 except ModuleNotFoundError:
     import sys, subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly>=5.20.0"])
     import plotly.graph_objects as go
-
 
 # Google Sheets
 import gspread
@@ -35,8 +30,7 @@ DATA_PATH = "data/colors_in_charts.csv"
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
 GSHEET_WORKSHEET_NAME = "Results"
 
-# עמודות נדרשות מינימליות בקובץ ה-CSV
-# נשאר כמו שהיה – לא שוברים תאימות. את עמודות הערכים/הצבעים נזהה דינמית.
+# עמודות נדרשות מינימליות בקובץ ה-CSV (ניישר אליאסים ב-load_data)
 REQUIRED_COLS = ["ID", "ImageFileName", "QuestionText", "QCorrectAnswer"]
 
 # --- Admin UI toggle via URL (?admin=1) ---
@@ -52,10 +46,7 @@ LOGO_CANDIDATES = [
     "images/Logo.png", "images/logo.png",
     "images/Logo29.10.24_B.png", "Logo.png", "Logo"
 ]
-USER_PHOTO_CANDIDATES = [
-    "images/DanaSherlock.png",
-    "DanaSherlock.png",
-]
+USER_PHOTO_CANDIDATES = ["images/DanaSherlock.png", "DanaSherlock.png"]
 WEBSITE_URL = "http://www.2dpoint.co.il"
 
 SHERLOCK_GITHUB_URL = (
@@ -77,28 +68,16 @@ st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפ�
 st.markdown(
     """
 <style>
-/* RTL בסיסי + פונטים */
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* רדיו אופקי – (משמש בדפים אחרים אם יש), השארנו */
 div.stRadio > div[role="radiogroup"]{
-  display:flex;
-  justify-content:center;
-  gap:12px;
-  flex-wrap:wrap;
+  display:flex; justify-content:center; gap:12px; flex-wrap:wrap;
 }
 div.stRadio > div[role="radiogroup"] label{
-  border:1px solid #d0d7de;
-  border-radius:12px;
-  padding:10px 16px;
-  min-width:52px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#fff;
-  box-shadow:0 1px 2px rgba(0,0,0,.05);
-  cursor:pointer;
+  border:1px solid #d0d7de; border-radius:12px; padding:10px 16px; min-width:52px;
+  display:flex; align-items:center; justify-content:center; background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.05); cursor:pointer;
 }
 div.stRadio > div[role="radiogroup"] label:hover{ background:#f6f8fa; }
 div.stRadio input[type="radio"]{ position:absolute; opacity:0; pointer-events:none; }
@@ -113,7 +92,7 @@ div.stButton > button {
   font-size: 16px; border-radius: 10px;
 }
 
-/* === NEW: hide Streamlit's fullscreen button === */
+/* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"] { display: none !important; }
 </style>
 """,
@@ -176,6 +155,16 @@ def load_data():
     df = df.dropna(how="all").fillna("")
     df = df.astype({c: str for c in df.columns})
 
+    # --- aliases to be forgiving with headers ---
+    aliases = {
+        "QCorrectA": "QCorrectAnswer",
+        "QuestionT": "QuestionText",
+        "ImageFile": "ImageFileName",
+    }
+    for src, dst in aliases.items():
+        if dst not in df.columns and src in df.columns:
+            df.rename(columns={src: dst}, inplace=True)
+
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
         raise ValueError(f"בעיית עמודות בקובץ הנתונים: חסרות {', '.join(missing)}")
@@ -223,8 +212,7 @@ def _ensure_headers(ws, expected_headers):
     current = ws.get_all_values()
     headers = list(expected_headers)
     if not current:
-        ws.append_row(headers)
-        return
+        ws.append_row(headers); return
     first_row = current[0]
     if first_row != headers:
         ws.update("1:1", [headers])
@@ -236,10 +224,8 @@ def get_next_participant_seq(sheet_id: str) -> int:
         meta = sh.worksheet("Meta")
     except gspread.WorksheetNotFound:
         meta = sh.add_worksheet(title="Meta", rows="2", cols="2")
-        meta.update("A1", "counter")
-        meta.update("A2", "1")
+        meta.update("A1", "counter"); meta.update("A2", "1")
         return 1
-
     try:
         cur = int(meta.acell("A2").value or "0")
     except Exception:
@@ -297,8 +283,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
             v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
             for v, sub in pool_df.groupby("V")
         }
-        vs = list(groups.keys())
-        random.shuffle(vs)
+        vs = list(groups.keys()); random.shuffle(vs)
         result, last_v = [], None
         for _ in range(n_needed):
             candidates = [v for v in vs if groups[v]]
@@ -306,8 +291,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
                 break
             non_same = [v for v in candidates if v != last_v] or candidates
             v = random.choice(non_same)
-            result.append(groups[v].pop(0))
-            last_v = v
+            result.append(groups[v].pop(0)); last_v = v
         if len(result) < n_needed:
             extra = pool_df.sample(
                 n=min(n_needed - len(result), len(pool_df)),
@@ -337,7 +321,6 @@ def _extract_option_values_and_colors(row: dict):
             vals[L] = float(row[f"Value{L}"])
         elif L in row and str(row[L]).strip() != "":
             vals[L] = float(row[L])
-
     if len(vals) != 5:
         raise ValueError("נדרשים ערכים לעמודות A..E (או ValueA..ValueE).")
 
@@ -348,14 +331,11 @@ def _extract_option_values_and_colors(row: dict):
             colors[L] = str(row[key]).strip()
 
     correct = str(row.get("QCorrectAnswer", "")).strip().upper()
-    default_gray = "#6b7280"
-    correct_green = "#22c55e"
+    default_gray = "#6b7280"; correct_green = "#22c55e"
     if not colors:
         colors = {L: (correct_green if L == correct else default_gray) for L in letters}
 
-    x = letters
-    y = [vals[L] for L in letters]
-    c = [colors[L] for L in letters]
+    x = letters; y = [vals[L] for L in letters]; c = [colors[L] for L in letters]
     return x, y, c
 
 # === גרף Plotly במקום תמונה ===
@@ -375,21 +355,14 @@ def _render_graph_block(title_html, question_text, row_dict):
             st.info("טיפ: ניתן לעבור ל'גרף בקוד' ע\"י הוספת עמודות ValueA..ValueE (ואופציונלית ColorA..ColorE) לקובץ.")
             return
         else:
-            st.error(f"שגיאת גרף: {e}")
-            return
+            st.error(f"שגיאת גרף: {e}"); return
 
     fig = go.Figure(go.Bar(
-        x=x,
-        y=y,
-        text=y,
-        textposition="outside",
-        marker_color=colors,
+        x=x, y=y, text=y, textposition="outside", marker_color=colors,
     ))
     fig.update_layout(
         margin=dict(l=20, r=20, t=10, b=20),
-        xaxis_title="", yaxis_title="",
-        showlegend=False,
-        bargap=0.35,
+        xaxis_title="", yaxis_title="", showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
     )
     left, mid, right = st.columns([1, 6, 1])
@@ -405,8 +378,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
 
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         st.session_state.awaiting_response = False
-        on_timeout()
-        st.stop()
+        on_timeout(); st.stop()
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     outer = st.columns([1, 6, 1])
@@ -418,16 +390,13 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
             if row[i].button(lab, use_container_width=True, key=f"btn_{lab}_{unique}"):
                 if st.session_state.awaiting_response:
                     st.session_state.awaiting_response = False
-                    on_press(lab)
-                    st.stop()
+                    on_press(lab); st.stop()
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-
-    time.sleep(1)
-    st.rerun()
+    time.sleep(1); st.rerun()
 
 
 # ===== Helper: clickable logo via base64 =====
@@ -467,21 +436,18 @@ def screen_welcome():
     )
 
     if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
-        st.stop()
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
 
     try:
         df = load_data()
     except Exception as e:
-        st.error(str(e))
-        st.stop()
+        st.error(str(e)); st.stop()
 
     if st.button("המשך לתרגול"):
         _ensure_participant_id()
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
         practice_item = df.iloc[0].to_dict()
-
         pool_df = df.iloc[1: 1 + N_TRIALS].copy()
         trials = build_alternating_trials(pool_df, N_TRIALS)
 
@@ -506,13 +472,11 @@ def screen_practice():
 
     def on_timeout():
         st.session_state.t_start = None
-        st.session_state.page = "trial"
-        st.rerun()
+        st.session_state.page = "trial"; st.rerun()
 
     def on_press(_):
         st.session_state.t_start = None
-        st.session_state.page = "trial"
-        st.rerun()
+        st.session_state.page = "trial"; st.rerun()
 
     _response_buttons_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
@@ -542,11 +506,9 @@ def screen_trial():
         )
         st.session_state.t_start = None
         if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1
-            st.rerun()
+            st.session_state.i += 1; st.rerun()
         else:
-            st.session_state.page = "end"
-            st.rerun()
+            st.session_state.page = "end"; st.rerun()
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
@@ -563,7 +525,6 @@ def screen_end():
     st.success("תודה על השתתפותך!")
 
     df = pd.DataFrame(st.session_state.results)
-
     admin = is_admin()
 
     if not st.session_state.saved_to_sheets and not df.empty:
