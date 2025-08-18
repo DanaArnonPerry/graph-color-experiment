@@ -71,6 +71,7 @@ st.markdown(
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
+/* רדיו אופקי */
 div.stRadio > div[role="radiogroup"]{
   display:flex; justify-content:center; gap:12px; flex-wrap:wrap;
 }
@@ -91,6 +92,9 @@ div.stButton > button {
   padding: 0 8px; margin: 4px 0;
   font-size: 16px; border-radius: 10px;
 }
+
+/* קרב את הגרף לכפתורים */
+div[data-testid="stPlotlyChart"] { margin-bottom: 4px !important; }
 
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"] { display: none !important; }
@@ -156,11 +160,7 @@ def load_data():
     df = df.astype({c: str for c in df.columns})
 
     # --- aliases to be forgiving with headers ---
-    aliases = {
-        "QCorrectA": "QCorrectAnswer",
-        "QuestionT": "QuestionText",
-        "ImageFile": "ImageFileName",
-    }
+    aliases = {"QCorrectA": "QCorrectAnswer", "QuestionT": "QuestionText", "ImageFile": "ImageFileName"}
     for src, dst in aliases.items():
         if dst not in df.columns and src in df.columns:
             df.rename(columns={src: dst}, inplace=True)
@@ -201,10 +201,7 @@ def _gs_client():
     sa_info = _read_service_account_from_secrets()
     creds = service_account.Credentials.from_service_account_info(
         sa_info,
-        scopes=[
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ],
+        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"],
     )
     return gspread.authorize(creds)
 
@@ -249,11 +246,7 @@ def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: 
     try:
         ws = sh.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:
-        ws = sh.add_worksheet(
-            title=worksheet_name,
-            rows=str(max(len(df) + 10, 1000)),
-            cols=str(len(df.columns) + 5),
-        )
+        ws = sh.add_worksheet(title=worksheet_name, rows=str(max(len(df) + 10, 1000)), cols=str(len(df.columns) + 5))
     _ensure_headers(ws, df.columns)
     if not df.empty:
         ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
@@ -279,10 +272,7 @@ def load_image(path: str):
 
 def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
     if "V" in pool_df.columns:
-        groups = {
-            v: sub.sample(frac=1, random_state=None).to_dict(orient="records")
-            for v, sub in pool_df.groupby("V")
-        }
+        groups = {v: sub.sample(frac=1, random_state=None).to_dict(orient="records") for v, sub in pool_df.groupby("V")}
         vs = list(groups.keys()); random.shuffle(vs)
         result, last_v = [], None
         for _ in range(n_needed):
@@ -293,10 +283,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
             v = random.choice(non_same)
             result.append(groups[v].pop(0)); last_v = v
         if len(result) < n_needed:
-            extra = pool_df.sample(
-                n=min(n_needed - len(result), len(pool_df)),
-                replace=False
-            ).to_dict(orient="records")
+            extra = pool_df.sample(n=min(n_needed - len(result), len(pool_df)), replace=False).to_dict(orient="records")
             result += extra
         return result[:n_needed]
     else:
@@ -344,12 +331,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
 
-/* קרב את הגרף לכפתורים (מוריד מרווח מתחת לגרף) */
-div[data-testid="stPlotlyChart"] { margin-bottom: 6px !important; }
-
-   
-    # רווח לפני הגרף (מוריד את הגרף למטה ומתן יותר רווח לכותרת)
-    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+    # רווח קטן מתחת לכותרת
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
     # חילוץ ערכים/צבעים
     try:
@@ -376,7 +359,7 @@ div[data-testid="stPlotlyChart"] { margin-bottom: 6px !important; }
     ))
     fig.update_traces(textfont=dict(size=20))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=60, b=4),   # t גדול (יותר רווח מול הכותרת), b קטן (קרוב לכפתורים)
+        margin=dict(l=20, r=20, t=50, b=0),   # b=0 מקרב לכפתורים
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -399,7 +382,9 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
         st.session_state.awaiting_response = False
         on_timeout(); st.stop()
 
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    # מרווח מינימלי לפני הכפתורים
+    st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
+
     outer = st.columns([1, 6, 1])
     with outer[1]:
         row = st.columns(5)
@@ -586,11 +571,7 @@ def screen_end():
             file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
             mime="text/csv",
         )
-        st.link_button(
-            "פתח/י את Google Sheet",
-            f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit",
-            type="primary",
-        )
+        st.link_button("פתח/י את Google Sheet", f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit", type="primary")
 
 # ========= Router =========
 page = st.session_state.page
