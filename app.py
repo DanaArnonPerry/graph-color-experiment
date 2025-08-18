@@ -89,7 +89,7 @@ div.stRadio > div[role="radiogroup"] label:has(input[type="radio"]:checked){
 /* כפתורי st.button קומפקטיים */
 div.stButton > button {
   height: 30px; min-width: 30px; width: 70%;
-  padding: 0 8px; margin: 4px 0;
+  padding: 0 8px; margin: 1px 0;
   font-size: 16px; border-radius: 10px;
 }
 
