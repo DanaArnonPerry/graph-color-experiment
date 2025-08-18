@@ -340,46 +340,57 @@ def _extract_option_values_and_colors(row: dict):
 
 # === גרף Plotly במקום תמונה ===
 def _render_graph_block(title_html, question_text, row_dict):
+    # כותרות
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
 
+    # חילוץ ערכי A..E + צבעים מתוך השורה
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
+        # תאימות לאחור: אם אין ערכים – נציג תמונה (אם קיימת)
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
             target_w = min(GRAPH_MAX_WIDTH_PX, img.width)
             left, mid, right = st.columns([1, 6, 1])
             with mid:
                 st.image(img, width=target_w)
-            st.info("טיפ: ניתן לעבור ל'גרף בקוד' ע\"י הוספת עמודות ValueA..ValueE (ואופציונלית ColorA..ColorE) לקובץ.")
+            st.info("טיפ: אפשר לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
             return
         else:
-            st.error(f"שגיאת גרף: {e}"); return
+            st.error(f"שגיאת גרף: {e}")
+            return
 
-  # ציור גרף (בלי רשתות, בלי ערכי Y, תוויות גדולות ובולד)
-fig = go.Figure(go.Bar(
-    x=x, y=y,
-    marker_color=colors,
-    text=y,                        # נשתמש בערכים עצמם כתוויות
-    textposition="outside",
-    texttemplate="<b>%{text}</b>", # בולד
-    textfont=dict(size=20)         # גדול יותר
-))
+    # === גרף: בלי קווי רשת, בלי ערכי Y, תוויות גדולות ובולד ===
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=x, y=y,
+                marker_color=colors,
+                text=[f"{v:.0f}" for v in y],   # התוויות מעל העמודות
+                textposition="outside",
+                texttemplate="<b>%{text}</b>",  # בולד
+                cliponaxis=False,                # שלא ייחתך למעלה
+            )
+        ]
+    )
 
-fig.update_layout(
-    margin=dict(l=20, r=20, t=10, b=20),
-    showlegend=False,
-    bargap=0.35,
-    uniformtext_minsize=12, uniformtext_mode="hide",
-    xaxis=dict(title="", showgrid=False),                 # בלי קווי רשת ב-X
-    yaxis=dict(title="", showgrid=False,                  # בלי קווי רשת ב-Y
-               showticklabels=False, zeroline=False)      # בלי מספרים בציר Y
-)
+    fig.update_traces(textfont=dict(size=20))  # גודל תוויות
 
-left, mid, right = st.columns([1, 6, 1])
-with mid:
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=10, b=20),
+        showlegend=False,
+        bargap=0.35,
+        uniformtext_minsize=12, uniformtext_mode="hide",
+        xaxis=dict(title="", showgrid=False),                 # בלי רשת ב-X
+        yaxis=dict(title="", showgrid=False,                  # בלי רשת ב-Y
+                   showticklabels=False, zeroline=False),     # בלי מספרים בציר Y
+    )
+
+    left, mid, right = st.columns([1, 6, 1])
+    with mid:
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
