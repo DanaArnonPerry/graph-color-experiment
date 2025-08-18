@@ -9,8 +9,13 @@ import streamlit as st
 from PIL import Image
 from io import BytesIO
 
-# === NEW ===
-import plotly.graph_objects as go  # גרף בקוד, בלי אייקון הרחבה
+# === NEW: ensure Plotly is available ===
+try:
+    import plotly.graph_objects as go  # גרף בקוד, בלי אייקון הרחבה
+except ModuleNotFoundError:
+    import sys, subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly>=5.20.0"])
+    import plotly.graph_objects as go
 
 # Google Sheets
 import gspread
@@ -96,12 +101,15 @@ div.stRadio > div[role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#e6f0ff; border-color:#80b3ff; box-shadow:0 0 0 2px rgba(128,179,255,.25) inset;
 }
 
-/* === NEW === כפתורי st.button קומפקטיים */
+/* כפתורי st.button קומפקטיים */
 div.stButton > button {
   height: 42px; min-width: 60px; width: 100%;
   padding: 0 8px; margin: 4px 0;
   font-size: 16px; border-radius: 10px;
 }
+
+/* === NEW: hide Streamlit's fullscreen button === */
+button[title="View fullscreen"] { display: none !important; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -310,17 +318,14 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
 # -------- גרף: רוחב מקסימלי --------
 GRAPH_MAX_WIDTH_PX = 1500
 
-# === NEW === עזר: חילוץ ערכי/צבעי A..E מהשורה (תומך בשמות גמישים)
+# === עזר: חילוץ ערכי/צבעי A..E מהשורה ===
 def _extract_option_values_and_colors(row: dict):
     """
-    מחפש ערכים לפי העדיפות הבאה:
     1) ValueA..ValueE  או  A..E
-    2) צבעים: ColorA..ColorE (אופציונלי). אם אין – ברירת מחדל אפור,
-       והתשובה הנכונה (QCorrectAnswer) תסומן בירוק.
+    2) צבעים: ColorA..ColorE (אופציונלי). אם אין – אפור, והתשובה הנכונה בירוק.
     """
     letters = ["A", "B", "C", "D", "E"]
 
-    # ערכים
     vals = {}
     for L in letters:
         if f"Value{L}" in row and str(row[f"Value{L}"]).strip() != "":
@@ -331,36 +336,31 @@ def _extract_option_values_and_colors(row: dict):
     if len(vals) != 5:
         raise ValueError("נדרשים ערכים לעמודות A..E (או ValueA..ValueE).")
 
-    # צבעים
     colors = {}
     for L in letters:
         key = f"Color{L}"
         if key in row and str(row[key]).strip() != "":
             colors[L] = str(row[key]).strip()
 
-    # ברירת מחדל לצבעים אם לא הוגדרו בקובץ
     correct = str(row.get("QCorrectAnswer", "")).strip().upper()
     default_gray = "#6b7280"
     correct_green = "#22c55e"
     if not colors:
         colors = {L: (correct_green if L == correct else default_gray) for L in letters}
 
-    # החזר לפי סדר A..E
     x = letters
     y = [vals[L] for L in letters]
     c = [colors[L] for L in letters]
     return x, y, c
 
-# === NEW === גרף Plotly במקום תמונה
+# === גרף Plotly במקום תמונה ===
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
 
-    # חילוץ ערכי A..E וצבעים
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
-        # אם אין עמודות ערכים – ננסה להציג את התמונה הישנה (תאימות לאחור)
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
             target_w = min(GRAPH_MAX_WIDTH_PX, img.width)
@@ -373,7 +373,6 @@ def _render_graph_block(title_html, question_text, row_dict):
             st.error(f"שגיאת גרף: {e}")
             return
 
-    # ציור גרף (ללא כפתור מסך-מלא)
     fig = go.Figure(go.Bar(
         x=x,
         y=y,
@@ -407,7 +406,7 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     outer = st.columns([1, 6, 1])
     with outer[1]:
-        row = st.columns(5)        # חמישה כפתורים בשורה
+        row = st.columns(5)
         labels = ["E", "D", "C", "B", "A"]
         unique = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
         for i, lab in enumerate(labels):
