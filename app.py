@@ -49,7 +49,7 @@ WEBSITE_URL = "http://www.2dpoint.co.il"  # קישור אתר במסך הסיו�
 
 # תמונת שרלוק מתוך Github (fallback)
 SHERLOCK_GITHUB_URL = (
-    "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/images/DanaSherlock.png"
+    "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/DanaSherlock.png"
 )
 SHERLOCK_IMG_WIDTH = 160  # רוחב תצוגה לתמונת שרלוק במסך הסיום
 
