@@ -344,47 +344,39 @@ def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
 
-    # חילוץ ערכי A..E + צבעים מתוך השורה
+    # רווח לפני הגרף (מוריד את הגרף למטה ומתן יותר רווח לכותרת)
+    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+
+    # חילוץ ערכים/צבעים
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
-        # תאימות לאחור: אם אין ערכים – נציג תמונה (אם קיימת)
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
             target_w = min(GRAPH_MAX_WIDTH_PX, img.width)
             left, mid, right = st.columns([1, 6, 1])
             with mid:
                 st.image(img, width=target_w)
-            st.info("טיפ: אפשר לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
+            st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
             return
         else:
             st.error(f"שגיאת גרף: {e}")
             return
 
-    # === גרף: בלי קווי רשת, בלי ערכי Y, תוויות גדולות ובולד ===
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=x, y=y,
-                marker_color=colors,
-                text=[f"{v:.0f}" for v in y],   # התוויות מעל העמודות
-                textposition="outside",
-                texttemplate="<b>%{text}</b>",  # בולד
-                cliponaxis=False,                # שלא ייחתך למעלה
-            )
-        ]
-    )
-
-    fig.update_traces(textfont=dict(size=20))  # גודל תוויות
-
+    # גרף: בלי רשת, בלי ערכי Y, תוויות גדולות ובולד
+    fig = go.Figure(go.Bar(
+        x=x, y=y, marker_color=colors,
+        text=[f"{v:.0f}" for v in y],
+        textposition="outside", texttemplate="<b>%{text}</b>",
+        cliponaxis=False
+    ))
+    fig.update_traces(textfont=dict(size=20))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=10, b=20),
-        showlegend=False,
-        bargap=0.35,
+        margin=dict(l=20, r=20, t=60, b=4),   # t גדול (יותר רווח מול הכותרת), b קטן (קרוב לכפתורים)
+        showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
-        xaxis=dict(title="", showgrid=False),                 # בלי רשת ב-X
-        yaxis=dict(title="", showgrid=False,                  # בלי רשת ב-Y
-                   showticklabels=False, zeroline=False),     # בלי מספרים בציר Y
+        xaxis=dict(title="", showgrid=False),
+        yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
     )
 
     left, mid, right = st.columns([1, 6, 1])
