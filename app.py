@@ -357,17 +357,29 @@ def _render_graph_block(title_html, question_text, row_dict):
         else:
             st.error(f"שגיאת גרף: {e}"); return
 
-    fig = go.Figure(go.Bar(
-        x=x, y=y, text=y, textposition="outside", marker_color=colors,
-    ))
-    fig.update_layout(
-        margin=dict(l=20, r=20, t=10, b=20),
-        xaxis_title="", yaxis_title="", showlegend=False, bargap=0.35,
-        uniformtext_minsize=12, uniformtext_mode="hide",
-    )
-    left, mid, right = st.columns([1, 6, 1])
-    with mid:
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+  # ציור גרף (בלי רשתות, בלי ערכי Y, תוויות גדולות ובולד)
+fig = go.Figure(go.Bar(
+    x=x, y=y,
+    marker_color=colors,
+    text=y,                        # נשתמש בערכים עצמם כתוויות
+    textposition="outside",
+    texttemplate="<b>%{text}</b>", # בולד
+    textfont=dict(size=20)         # גדול יותר
+))
+
+fig.update_layout(
+    margin=dict(l=20, r=20, t=10, b=20),
+    showlegend=False,
+    bargap=0.35,
+    uniformtext_minsize=12, uniformtext_mode="hide",
+    xaxis=dict(title="", showgrid=False),                 # בלי קווי רשת ב-X
+    yaxis=dict(title="", showgrid=False,                  # בלי קווי רשת ב-Y
+               showticklabels=False, zeroline=False)      # בלי מספרים בציר Y
+)
+
+left, mid, right = st.columns([1, 6, 1])
+with mid:
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
