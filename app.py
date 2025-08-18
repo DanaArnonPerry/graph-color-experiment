@@ -42,11 +42,9 @@ LOGO_CANDIDATES = [
 ]
 # כולל גם fallback לכתיב הישן Sherlok
 USER_PHOTO_CANDIDATES = [
-    "images/DanaSherlock.png", "images/DanaSherlock.jpg",
-    "images/DanaSherlok.png", "images/DanaSherlok.jpg",
-    "DanaSherlock.png", "DanaSherlock.jpg",
-    "DanaSherlok.png", "DanaSherlok.jpg",
-]
+    "images/DanaSherlock.png", 
+    "DanaSherlock.png", 
+  ]
 WEBSITE_URL = "http://www.2dpoint.co.il"  # קישור אתר במסך הסיום
 
 # תמונת שרלוק מתוך Github (fallback)
