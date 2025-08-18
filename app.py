@@ -350,36 +350,35 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
+    # אם הזמן נגמר – פעולה חד-פעמית
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         st.session_state.awaiting_response = False
         on_timeout()
         st.stop()
 
-    # בחירה אופקית (עובד נהדר גם במובייל)
-    key_suffix = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
-    choice = st.radio(
-        "בחר/י תשובה",
-        ["E", "D", "C", "B", "A"],
-        index=None,                    # בלי ברירת מחדל
-        horizontal=True,               # אופקי
-        label_visibility="collapsed",  # בלי כותרת
-        key=f"choice_{key_suffix}",
-    )
+    # --- כפתורים אמיתיים, בשורה, ממורכזים מתחת לגרף ---
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)  # רווח קטן
+    outer = st.columns([1, 6, 1])  # עמודת אמצע רחבה
+    with outer[1]:
+        row = st.columns(5)        # חמישה כפתורים בשורה אחת
+        labels = ["A", "B", "C", "D", "E"]
+        unique = f"{st.session_state.i}_{int(st.session_state.t_start or 0)}"
+        for i, lab in enumerate(labels):
+            if row[i].button(lab, use_container_width=True, key=f"btn_{lab}_{unique}"):
+                if st.session_state.awaiting_response:  # הגנה נוספת
+                    st.session_state.awaiting_response = False
+                    on_press(lab)
+                    st.stop()
 
-    if choice and st.session_state.awaiting_response:
-        st.session_state.awaiting_response = False
-        on_press(choice)
-        st.stop()
-
-    # טיימר מוצג מתחת
+    # הטיימר מתחת לבחירה
     st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: "
-        f"<b>{remain}</b> שניות</div>",
+        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
 
     time.sleep(1)
     st.rerun()
+
 
 
 # ===== Helper: clickable logo via base64 =====
