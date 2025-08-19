@@ -102,15 +102,12 @@ div.stRadio > div[role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#e6f0ff; border-color:#80b3ff; box-shadow:0 0 0 2px rgba(128,179,255,.25) inset;
 }
 
-/* כפתורי st.button קומפקטיים + אופקי */
-div.stButton { display:inline-block; margin: 2px 6px; }
-div.stButton > button {
-  height: 36px; min-width: 48px; padding: 0 12px; margin: 1px 0;
-  font-size: 16px; border-radius: 10px; width: auto;
-}
+/* שורת כפתורי תשובה יציבה, ממוקדת רק לשורת הכפתורים */
+.answer-row { display:flex; justify-content:center; gap:10px; flex-wrap:nowrap; overflow-x:auto; padding:6px 0; }
+.answer-row .stButton>button { height: 36px; min-width: 64px; font-size: 16px; border-radius: 10px; }
 
-/* קרב את הגרף לכפתורים */
-div[data-testid="stPlotlyChart"] { margin-bottom: -30px !important; }
+/* אל תקצרי את המרג'ין כדי למנוע "קפיצות" */
+div[data-testid="stPlotlyChart"] { margin-bottom: 0 !important; }
 
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"] { display: none !important; }
@@ -407,17 +404,23 @@ def _render_graph_block(title_html, question_text, row_dict):
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
+        hovermode=False,  # פחות הבהובים בזמן רענון הטיימר
     )
 
     is_m = _is_mobile()
     if is_m:
         fig.update_layout(width=MOBILE_CHART_WIDTH_PX, height=420)
+
     left, mid, right = st.columns([1, 6, 1])
     with mid:
         st.plotly_chart(
             fig,
             use_container_width=not is_m,   # במובייל – לא רספונסיבי
-            config={"displayModeBar": False, "responsive": (not is_m)}
+            config={
+                "displayModeBar": False,
+                "responsive": (not is_m),
+                "staticPlot": True,  # הופך את הגרף לסטטי כדי למנוע קפיצות בזמן rerun
+            },
         )
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
@@ -437,14 +440,18 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
 
     outer = st.columns([1, 6, 1])
     with outer[1]:
+        # עטיפה שדואגת לשורה אחת (עם גלילה אופקית אם צר)
+        st.markdown('<div class="answer-row">', unsafe_allow_html=True)
+        cols = st.columns(5, gap="small")
         labels = ["E", "D", "C", "B", "A"]
         unique = f"{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
-        clicked = None
-        for lab in labels:
-            if st.button(lab, key=f"btn_{lab}_{unique}"):
-                clicked = lab
-        if clicked is not None:
-            on_press(clicked); st.stop()
+        for c, lab in zip(cols, labels):
+            with c:
+                if st.button(lab, use_container_width=True, key=f"btn_{lab}_{unique}"):
+                    if st.session_state.awaiting_response:
+                        st.session_state.awaiting_response = False
+                        on_press(lab); st.stop()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
