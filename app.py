@@ -103,12 +103,11 @@ div.stRadio > div[role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#e6f0ff; border-color:#80b3ff; box-shadow:0 0 0 2px rgba(128,179,255,.25) inset;
 }
 
-/* שורת כפתורי תשובה יציבה ונגללת לרוחב במובייל */
-.answer-row { display:flex; justify-content:center; gap:10px; flex-wrap:nowrap; overflow-x:auto; padding:8px 0 2px; }
-.answer-row div.stButton { display:inline-block; } /* אל תתני ל-Streamlit לערום אותם אנכית */
-.answer-row .stButton > button { height:36px; min-width:64px; font-size:16px; border-radius:10px; }
+/* שורת כפתורי תשובה – פריסה אופקית יציבה */
+.answer-row { width:100%; margin:6px 0 0; }
+.answer-row .stButton > button { height: 36px; width:100%; min-width:64px; font-size:16px; border-radius:10px; }
 
-/* ייצוב מרווח הגרף כדי למנוע קפיצות */
+/* ייצוב מרווח הגרף כדי למנוע "קפיצות" */
 div[data-testid="stPlotlyChart"] { margin-bottom: 6px !important; }
 
 /* הסתרת fullscreen של Streamlit */
@@ -235,7 +234,7 @@ def _ensure_headers(ws, expected_headers):
     if not current:
         ws.append_row(headers); return
     first_row = current[0]
-    if first_row != headers:
+    if (first_row or []) != headers:
         ws.update("1:1", [headers])
 
 def get_next_participant_seq(sheet_id: str) -> int:
@@ -426,7 +425,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         )
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
-    """שורת לחצנים (A..E) + טיימר חד-פעמי בצד לקוח (ללא rerun כל שניה)."""
+    """שורת לחצנים (A..E) + טיימר חד-פעמי (ללא rerun כל שניה)."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -443,39 +442,28 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
     # אותה פריסת עמודות כמו הגרף – הכפתורים בדיוק מתחתיו
     outer = st.columns([1, 6, 1])
     with outer[1]:
-        # עטיפה שדואגת לשורה אחת (עם גלילה אופקית אם צר)
-        st.markdown('<div class="answer-row">', unsafe_allow_html=True)
+        # 5 עמודות אופקיות יציבות
+        cols = st.columns(5, gap="small")
         labels = ["E", "D", "C", "B", "A"]
         unique = f"{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
-        for lab in labels:
-            if st.button(lab, use_container_width=False, key=f"btn_{lab}_{unique}"):
-                if st.session_state.awaiting_response:
-                    st.session_state.awaiting_response = False
-                    on_press(lab); st.stop()
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    # טיימר קליינט־סייד: מציג ספירה לאחור ומרענן *פעם אחת* כשנגמר הזמן
-    timer_html = f"""
-    <div style='text-align:center; margin-top:12px; font-family:inherit;'>
-      ⏳ זמן שנותר: <b id="t">{remain}</b> שניות
-    </div>
-    <script>
-      var r = {remain};
-      var t = document.getElementById("t");
-      if (t) {{
-        var iv = setInterval(function(){{
-          r -= 1;
-          if (r < 0) r = 0;
-          t.textContent = r;
-        }}, 1000);
-        setTimeout(function(){{
-          clearInterval(iv);
-          window.parent.location.reload();
-        }}, {remain} * 1000);
-      }}
-    </script>
-    """
-    components.html(timer_html, height=40, scrolling=False)
+        with st.container():
+            st.markdown('<div class="answer-row">', unsafe_allow_html=True)
+            for c, lab in zip(cols, labels):
+                with c:
+                    if st.button(lab, use_container_width=True, key=f"btn_{lab}_{unique}"):
+                        if st.session_state.awaiting_response:
+                            st.session_state.awaiting_response = False
+                            on_press(lab); st.stop()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # טיימר בתצוגה (סטטי) + רענון חד-פעמי בסוף הזמן
+    st.markdown(
+        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
+        unsafe_allow_html=True,
+    )
+    # רענון פעם אחת בלבד כשהזמן מסתיים – ללא setInterval (פחות הבהובים)
+    components.html(f"<script>setTimeout(()=>window.parent.location.reload(), {remain}*1000);</script>", height=0)
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
