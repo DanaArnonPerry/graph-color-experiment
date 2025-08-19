@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 from io import BytesIO
+import streamlit.components.v1 as components
 
 # --- Ensure Plotly is available (safe import) ---
 try:
@@ -102,12 +103,13 @@ div.stRadio > div[role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#e6f0ff; border-color:#80b3ff; box-shadow:0 0 0 2px rgba(128,179,255,.25) inset;
 }
 
-/* שורת כפתורי תשובה יציבה, ממוקדת רק לשורת הכפתורים */
-.answer-row { display:flex; justify-content:center; gap:10px; flex-wrap:nowrap; overflow-x:auto; padding:6px 0; }
-.answer-row .stButton>button { height: 36px; min-width: 64px; font-size: 16px; border-radius: 10px; }
+/* שורת כפתורי תשובה יציבה ונגללת לרוחב במובייל */
+.answer-row { display:flex; justify-content:center; gap:10px; flex-wrap:nowrap; overflow-x:auto; padding:8px 0 2px; }
+.answer-row div.stButton { display:inline-block; } /* אל תתני ל-Streamlit לערום אותם אנכית */
+.answer-row .stButton > button { height:36px; min-width:64px; font-size:16px; border-radius:10px; }
 
-/* אל תקצרי את המרג'ין כדי למנוע "קפיצות" */
-div[data-testid="stPlotlyChart"] { margin-bottom: 0 !important; }
+/* ייצוב מרווח הגרף כדי למנוע קפיצות */
+div[data-testid="stPlotlyChart"] { margin-bottom: 6px !important; }
 
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"] { display: none !important; }
@@ -404,7 +406,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
-        hovermode=False,  # פחות הבהובים בזמן רענון הטיימר
+        hovermode=False,  # פחות הבהובים בזמן רענון
     )
 
     is_m = _is_mobile()
@@ -419,12 +421,12 @@ def _render_graph_block(title_html, question_text, row_dict):
             config={
                 "displayModeBar": False,
                 "responsive": (not is_m),
-                "staticPlot": True,  # הופך את הגרף לסטטי כדי למנוע קפיצות בזמן rerun
+                "staticPlot": True,  # גרף סטטי כדי למנוע קפיצות
             },
         )
 
 def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
-    """שורת לחצנים (A..E) + טיימר. on_press מנהל את ה-state (כולל אם יש ריטרי בתרגול)."""
+    """שורת לחצנים (A..E) + טיימר חד-פעמי בצד לקוח (ללא rerun כל שניה)."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -435,29 +437,45 @@ def _response_buttons_and_timer(timeout_sec, on_timeout, on_press):
         st.session_state.awaiting_response = False
         on_timeout(); st.stop()
 
-    # מרווח מינימלי לפני הכפתורים
+    # מרווח קטן לפני הכפתורים
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
+    # אותה פריסת עמודות כמו הגרף – הכפתורים בדיוק מתחתיו
     outer = st.columns([1, 6, 1])
     with outer[1]:
         # עטיפה שדואגת לשורה אחת (עם גלילה אופקית אם צר)
         st.markdown('<div class="answer-row">', unsafe_allow_html=True)
-        cols = st.columns(5, gap="small")
         labels = ["E", "D", "C", "B", "A"]
         unique = f"{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
-        for c, lab in zip(cols, labels):
-            with c:
-                if st.button(lab, use_container_width=True, key=f"btn_{lab}_{unique}"):
-                    if st.session_state.awaiting_response:
-                        st.session_state.awaiting_response = False
-                        on_press(lab); st.stop()
+        for lab in labels:
+            if st.button(lab, use_container_width=False, key=f"btn_{lab}_{unique}"):
+                if st.session_state.awaiting_response:
+                    st.session_state.awaiting_response = False
+                    on_press(lab); st.stop()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
-        unsafe_allow_html=True,
-    )
-    time.sleep(1); st.rerun()
+    # טיימר קליינט־סייד: מציג ספירה לאחור ומרענן *פעם אחת* כשנגמר הזמן
+    timer_html = f"""
+    <div style='text-align:center; margin-top:12px; font-family:inherit;'>
+      ⏳ זמן שנותר: <b id="t">{remain}</b> שניות
+    </div>
+    <script>
+      var r = {remain};
+      var t = document.getElementById("t");
+      if (t) {{
+        var iv = setInterval(function(){{
+          r -= 1;
+          if (r < 0) r = 0;
+          t.textContent = r;
+        }}, 1000);
+        setTimeout(function(){{
+          clearInterval(iv);
+          window.parent.location.reload();
+        }}, {remain} * 1000);
+      }}
+    </script>
+    """
+    components.html(timer_html, height=40, scrolling=False)
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
