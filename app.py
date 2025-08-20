@@ -6,7 +6,7 @@ import base64
 import requests
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components  # <── רענון חד-פעמי ב-JS
+import streamlit.components.v1 as components
 from PIL import Image
 from io import BytesIO
 
@@ -62,9 +62,34 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 /* ייצוב מרווח הגרף כדי למנוע "קפיצות" */
 div[data-testid="stPlotlyChart"] { margin-bottom: 10px !important; }
 
-/* Segmented control: שורת בחירה אופקית יציבה */
-div[data-baseweb="segmented-control"] { direction: ltr; }
-div[data-baseweb="segmented-control"] > div { justify-content:center; }
+/* --- Action Buttons (Radio) --- */
+/* ממורכז, אופקי, עם רווחים גדולים בין האופציות */
+div[data-testid="stRadio"] > div[role="radiogroup"]{
+  display:flex; justify-content:center; align-items:center;
+  gap: 48px;            /* רווח בין הכפתורים */
+  flex-wrap: nowrap;    /* לא לרדת שורה */
+  overflow-x: auto;     /* אם ממש צר – גלילה אופקית */
+  padding: 8px 0;
+}
+div[data-testid="stRadio"] label{
+  display:flex; align-items:center; justify-content:center;
+  min-width: 64px; min-height: 48px;
+  padding: 6px 18px;
+  background: #e5e7eb;              /* אפור בהיר */
+  border: 1.5px solid #9ca3af;      /* קו אפור */
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.08);
+  font-weight: 700; font-size: 18px;
+  cursor: pointer; user-select: none;
+}
+div[data-testid="stRadio"] label:hover{ background:#f3f4f6; }
+div[data-testid="stRadio"] input[type="radio"]{ position:absolute; opacity:0; pointer-events:none; }
+/* מצב בחור/ה */
+div[data-testid="stRadio"] label:has(input[type="radio"]:checked){
+  background:#d1d5db;
+  border-color:#6b7280;
+  box-shadow: inset 0 0 0 2px #9ca3af33;
+}
 
 /* מובייל: הגרף לא רספונסיבי – גלילה אופקית במידת הצורך */
 @media (max-width: 768px){
@@ -334,8 +359,8 @@ def _render_graph_block(title_html, question_text, row_dict):
             config={"displayModeBar": False, "responsive": True, "staticPlot": True},
         )
 
-def _segmented_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """בחירה אופקית + טיימר חד-פעמי (ללא rerun מחזורי)."""
+# === כפתורי פעולה בסגנון "קופסאות אפורות" ===
+def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -347,22 +372,29 @@ def _segmented_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     outer = st.columns([1,6,1])
     with outer[1]:
-        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
+        unique = f"radio_{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
 
-        unique = f"seg_{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
         def _on_change():
             choice = st.session_state.get(unique)
             if st.session_state.awaiting_response and choice:
                 st.session_state.awaiting_response = False
-                on_press(str(choice))  # אין st.rerun כאן – Streamlit מרענן לבד
+                on_press(str(choice))  # אין st.rerun כאן
 
-        st.segmented_control(label="", options=["A","B","C","D","E"], key=unique, on_change=_on_change)
+        # ממורכז + אופקי; index=None כדי שלא תהיה בחירה אוטומטית
+        st.radio(
+            label="",
+            options=["A","B","C","D","E"],
+            key=unique,
+            horizontal=True,
+            index=None,
+            on_change=_on_change,
+        )
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    # רענון חד-פעמי בסוף הזמן (בלי תלות ב-st_autorefresh)
+    # רענון חד-פעמי בסוף הזמן
     if remain > 0:
         components.html(
             f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
@@ -466,7 +498,7 @@ def _practice_one(idx: int):
             )
 
     if st.session_state.awaiting_response:
-        _segmented_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+        _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
     else:
         center = st.columns([1,6,1])[1]
         with center:
@@ -543,13 +575,11 @@ def screen_trial():
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1
-            st.rerun()
+            st.session_state.i += 1; st.rerun()
         else:
-            st.session_state.page = "end"
-            st.rerun()
+            st.session_state.page = "end"; st.rerun()
 
-    _segmented_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+    _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_end():
     st.title("סיום הניסוי")
