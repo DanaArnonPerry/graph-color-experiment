@@ -52,52 +52,125 @@ LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
+st.set_page_config(page_title="× ×™×¡×•×™ ×'×–×™×›×¨×•×Ÿ ×—×–×•×ª×™ ×©×œ ×'×¨×¤×™×", page_icon="ðŸ"Š", layout="centered")
 st.markdown(
     """
 <style>
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* לקרב את שורת הכפתורים לגרף */
+/* מרווח קטן אחרי הגרף כדי למנוע "קפיצות" ולקרב את הכפתורים */
 div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
 
-/* --- Answer dots מיושרות בדיוק מתחת ל-A..E --- */
-#answerbar{ display:flex; justify-content:center; }
-#answerbar [data-testid="stRadio"]{ width:100%; max-width:100%; margin:0; }
-#answerbar [role="radiogroup"]{
-  /* אוכפים אופקי כתצורת ברירת מחדל */
-  display:grid !important;
-  grid-template-columns: repeat(5, 1fr) !important; /* 5 תאים שווים */
-  justify-items:center !important; align-items:center !important;
-  gap:0 !important; padding:0 !important; margin:0 !important; overflow:visible !important;
+/* --- Answer Buttons מיושרים אופקית תחת A..E --- */
+#answerbar{ 
+    display: flex; 
+    justify-content: center; 
+    margin: 20px 0;
+    padding: 0 20px;
 }
+
+#answerbar [data-testid="stRadio"]{ 
+    width: 100%; 
+    max-width: 500px; /* הגבלת רוחב מקסימלי */
+    margin: 0; 
+}
+
+#answerbar [role="radiogroup"]{
+    display: flex;
+    justify-content: space-between; /* פיזור שווה בין הכפתורים */
+    align-items: center;
+    width: 100%; 
+    gap: 10px; /* מרווח קבוע בין כפתורים */
+    padding: 0; 
+    margin: 0; 
+    overflow: visible;
+}
+
+/* עיצוב הכפתורים כעיגולים עם אותיות */
+#answerbar [role="radiogroup"] label{
+    width: 50px; 
+    height: 50px; 
+    border-radius: 50%;
+    background: #f8f9fa; 
+    border: 3px solid #dee2e6;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-size: 18px; 
+    font-weight: bold;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    flex-shrink: 0; /* מונע כיווץ הכפתורים */
+}
+
+/* הצגת האותיות A-E */
+#answerbar [role="radiogroup"] label:nth-child(1)::after { content: "A"; }
+#answerbar [role="radiogroup"] label:nth-child(2)::after { content: "B"; }
+#answerbar [role="radiogroup"] label:nth-child(3)::after { content: "C"; }
+#answerbar [role="radiogroup"] label:nth-child(4)::after { content: "D"; }
+#answerbar [role="radiogroup"] label:nth-child(5)::after { content: "E"; }
 
 /* מסתירים את עיגול הרדיו המקורי */
 #answerbar [role="radiogroup"] input[type="radio"]{
-  position:absolute; opacity:0; pointer-events:none; width:0; height:0;
+    position: absolute; 
+    opacity: 0; 
+    pointer-events: none; 
+    width: 0; 
+    height: 0;
 }
 
-/* נקודות עגולות */
-#answerbar [role="radiogroup"] label{
-  width:34px; height:34px; border-radius:50%;
-  background:#e5e7eb; border:2px solid #9ca3af;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:0; line-height:0; user-select:none; cursor:pointer;
-  box-shadow:0 1px 0 rgba(0,0,0,.08);
+/* אפקט hover */
+#answerbar [role="radiogroup"] label:hover{ 
+    background: #e9ecef; 
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
-#answerbar [role="radiogroup"] label:hover{ background:#f3f4f6; }
+
+/* כפתור נבחר */
 #answerbar [role="radiogroup"] label:has(input[type="radio"]:checked){
-  background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
+    background: #007bff; 
+    border-color: #0056b3; 
+    color: white;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
 }
 
-/* מובייל – נקודות מעט קטנות יותר */
-@media (max-width:768px){
-  #answerbar [role="radiogroup"] label{ width:28px; height:28px; }
+/* עיצוב למובייל */
+@media (max-width: 768px){
+    #answerbar [role="radiogroup"] label{ 
+        width: 45px; 
+        height: 45px; 
+        font-size: 16px;
+    }
+    
+    #answerbar [role="radiogroup"]{
+        gap: 8px;
+    }
+    
+    #answerbar{
+        padding: 0 10px;
+    }
+}
+
+/* עיצוב למכשירים קטנים מאוד */
+@media (max-width: 480px){
+    #answerbar [role="radiogroup"] label{ 
+        width: 40px; 
+        height: 40px; 
+        font-size: 14px;
+    }
+    
+    #answerbar [role="radiogroup"]{
+        gap: 5px;
+    }
 }
 
 /* הסתרת fullscreen המובנה של Streamlit */
-button[title="View fullscreen"]{ display:none !important; }
+button[title="View fullscreen"]{ display: none !important; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -125,7 +198,7 @@ def init_state():
     ss.setdefault("run_start_iso", "")
     ss.setdefault("is_admin", False)
     ss.setdefault("awaiting_response", False)
-    ss.setdefault("last_feedback_html", "")  # משוב – לתרגול בלבד
+    ss.setdefault("last_feedback_html", "")  # משוב â€" לתרגול בלבד
 init_state()
 
 # ========= Admin =========
@@ -135,7 +208,7 @@ def is_admin(show_ui: bool = False):
         with st.sidebar:
             if LOGO_PATH:
                 st.image(LOGO_PATH, use_container_width=True)
-            st.markdown("**🔐 אזור מנהל**")
+            st.markdown("**ðŸ" אזור מנהל**")
             if not st.session_state.is_admin:
                 pin = st.text_input("הכנסי PIN:", type="password", key="admin_pin")
                 if st.button("כניסה", key="admin_login_btn"):
@@ -148,11 +221,11 @@ def is_admin(show_ui: bool = False):
                         st.error("לא מוגדר PIN (admin.pin) ב-Secrets.")
                     elif str(pin).strip() == str(admin_pin).strip():
                         st.session_state.is_admin = True
-                        st.success("מנהל מחובר ✅")
+                        st.success("מנהל מחובר âœ…")
                     else:
                         st.error("PIN שגוי")
             else:
-                st.success("מנהל מחובר ✅")
+                st.success("מנהל מחובר âœ…")
     return st.session_state.is_admin
 
 # ========= Data =========
@@ -328,7 +401,7 @@ def _render_graph_block(title_html, question_text, row_dict):
             left, mid, right = st.columns([1,6,1])
             with mid:
                 st.image(img, width=min(1500, img.width))
-            st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
+            st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלי ColorA..ColorE).")
             return
         else:
             st.error(f"שגיאת גרף: {e}")
@@ -372,32 +445,31 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     outer = st.columns([1,6,1])
     with outer[1]:
-        # מפתח יציב (ללא timestamp) מונע כפתור חדש בכל ריצה ולכן לא "נופל" לאנכי
-        unique = f"radio_{st.session_state.page}_{st.session_state.i}"
+        unique = f"radio_{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
 
         def _on_change():
             choice = st.session_state.get(unique)
             if st.session_state.awaiting_response and choice:
                 st.session_state.awaiting_response = False
-                on_press(str(choice))
+                on_press(str(choice))  # אין st.rerun כאן; Streamlit מבצע רענון בעצמו
 
-        # עוטפים את ה-radio כדי שה-CSS יישם גריד של 5 תאים מתחת לגרף
+        # עוטפים את ה-radio כדי שה-CSS יישם בריד של 5 תאים
         st.markdown('<div id="answerbar">', unsafe_allow_html=True)
         st.radio(
             "", ["A","B","C","D","E"],
             key=unique,
             index=None,
             label_visibility="collapsed",
-            horizontal=True,  # חיזוק נוסף לאופקי
+            horizontal=False,            # הגריד הואב לפריסה אופקית וייישור תחת A..E
             on_change=_on_change
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
+        f"<div style='text-align:center; margin-top:12px;'>â³ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    # רענון יחיד בסיום הטיימר (ללא הבהובים)
+    # רענון יחיד בסיום הטיימר (ללא הגדגוח)
     if remain > 0:
         components.html(
             f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
@@ -419,12 +491,12 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
 
 # ========= Screens =========
 def screen_welcome():
-    st.title("ניסוי בזיכרון חזותי של גרפים 📊")
+    st.title("ניסוי בזיכרון חזותי של גרפים ðŸ"Š")
     st.markdown(
         """
-**שלום וברוכ/ה הבא/ה לניסוי**  
+**שלום וברוך/ה הבא/ה לניסוי**  
 
-במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
+במהלך הניסוי יוצגו **40 גרפים** שלבגידן תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
 
 חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
 
@@ -433,7 +505,7 @@ def screen_welcome():
 
 לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול** (לא נשמרות בתוצאות).
 
-כדי להתחיל – לחצו על **המשך לתרגול**.
+כדי להתחיל â€" לחצו על **המשך לתרגול**.
 """
     )
 
@@ -498,12 +570,12 @@ def _practice_one(idx: int):
         if chosen == correct_letter:
             st.session_state.awaiting_response = False
             st.session_state.last_feedback_html = (
-                f"<div style='text-align:center; margin:10px 0; font-weight:700;'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
+                f"<div style='text-align:center; margin:10px 0; font-weight:700;'>âœ… צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
             )
         else:
             st.session_state.awaiting_response = True
             st.session_state.last_feedback_html = (
-                "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
+                "<div style='text-align:center; margin:10px 0; font-weight:700;'>âŒ לא מדויק â€" נסה/י שוב.</div>"
             )
 
     if st.session_state.awaiting_response:
@@ -602,7 +674,7 @@ def screen_end():
     else:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.success("התשובות נשלחו בהצלחה ✅")
+            st.success("התשובות נשלחו בהצלחה âœ…")
         except Exception as e:
             if admin:
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
