@@ -62,38 +62,39 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 /* מרווח קטן אחרי הגרף כדי למנוע "קפיצות" */
 div[data-testid="stPlotlyChart"]{ margin-bottom: 8px !important; }
 
-/* --- Answer Bar (שורה אחת, ממורכז) --- */
-#answerbar{ display:flex; justify-content:center; }
-#answerbar [data-testid="stRadio"]{ margin:0; }
-#answerbar [role="radiogroup"]{
-  display:grid;
-  grid-template-columns: repeat(5, 72px);
-  justify-content:center; align-items:center;
-  gap:32px;
+/* --- עיצוב אוניברסלי לשורת התשובות (st.radio) --- */
+div[data-testid="stRadio"] > div[role="radiogroup"]{
+  display:flex;                       /* אופקי */
+  justify-content:center;             /* ממורכז */
+  align-items:center;
+  gap:32px;                           /* רווח בין כפתורים */
   padding:6px 0 2px;
   overflow:visible;
 }
-#answerbar [role="radiogroup"] label{
+div[data-testid="stRadio"] > div[role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
-  width:72px; height:56px;
+  min-width:72px; height:56px;        /* גודל הכפתור */
   padding:0;
   background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
-  font-weight:800; font-size:22px; color:#111;
+  font-weight:800; font-size:22px; color:#111; /* האות בשחור */
   cursor:pointer; user-select:none;
 }
-#answerbar [role="radiogroup"] input[type="radio"]{
-  position:absolute; opacity:0; pointer-events:none;
+/* מסתירים את עיגול הרדיו המקורי */
+div[data-testid="stRadio"] input[type="radio"]{
+  position:absolute; opacity:0; pointer-events:none; width:0; height:0;
 }
-#answerbar [role="radiogroup"] label:hover{ background:#f3f4f6; }
-#answerbar [role="radiogroup"] label:has(input[type="radio"]:checked]){
+div[data-testid="stRadio"] > div[role="radiogroup"] label:hover{ background:#f3f4f6; }
+div[data-testid="stRadio"] > div[role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
 }
 
-/* מובייל – כפתורים מעט קטנים יותר כדי שייכנסו בשורה אחת וללא גלילה */
+/* מובייל – מעט יותר קטן כדי להיכנס בשורה אחת */
 @media (max-width: 768px){
-  #answerbar [role="radiogroup"]{ grid-template-columns: repeat(5, 56px); gap:18px; }
-  #answerbar [role="radiogroup"] label{ width:56px; height:48px; font-size:18px; }
+  div[data-testid="stRadio"] > div[role="radiogroup"]{ gap:18px; }
+  div[data-testid="stRadio"] > div[role="radiogroup"] label{
+    min-width:56px; height:48px; font-size:18px;
+  }
 }
 
 /* הסתרת fullscreen המובנה של Streamlit */
