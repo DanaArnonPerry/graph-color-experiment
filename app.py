@@ -6,9 +6,9 @@ import base64
 import requests
 import pandas as pd
 import streamlit as st
+from streamlit import st_autorefresh
 from PIL import Image
 from io import BytesIO
-import streamlit.components.v1 as components
 
 # --- Ensure Plotly is available (safe import) ---
 try:
@@ -27,14 +27,12 @@ N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
 DATA_PATH = "data/colors_in_charts.csv"
 
-# מזהה הגיליון ו-worksheet לתוצאות
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
 GSHEET_WORKSHEET_NAME = "Results"
 
-# עמודות נדרשות מינימליות בקובץ ה-CSV
 REQUIRED_COLS = ["ID", "ImageFileName", "QuestionText", "QCorrectAnswer"]
 
-# ========= (Optional) Brand =========
+# ========= Brand =========
 LOGO_CANDIDATES = [
     "images/Logo.png", "images/logo.png",
     "images/Logo29.10.24_B.png", "Logo.png", "Logo"
@@ -65,13 +63,13 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"] { margin-bottom: 10px !important; }
 
 /* Segmented control: שורת בחירה אופקית יציבה */
-div[data-baseweb="segmented-control"] { direction: ltr; } /* שלא יתהפך ב-RTL */
+div[data-baseweb="segmented-control"] { direction: ltr; }
 div[data-baseweb="segmented-control"] > div { justify-content:center; }
 
-/* מובייל: הגרף לא רספונסיבי ומאפשר גלילה אופקית */
+/* מובייל: הגרף לא רספונסיבי – גלילה אופקית במידת הצורך */
 @media (max-width: 768px){
   main .block-container { overflow-x:auto; }
-  div[data-testid="stPlotlyChart"] { min-width: 620px; }  /* "רוחב קבוע" במובייל */
+  div[data-testid="stPlotlyChart"] { min-width: 620px; }
 }
 
 /* הסתרת fullscreen של Streamlit */
@@ -82,6 +80,12 @@ button[title="View fullscreen"] { display: none !important; }
 )
 
 # ========= Session State =========
+def _admin_ui_enabled() -> bool:
+    try:
+        return (st.query_params.get("admin") == "1")
+    except Exception:
+        return (st.experimental_get_query_params().get("admin", ["0"])[0] == "1")
+
 def init_state():
     ss = st.session_state
     ss.setdefault("page", "welcome")     # welcome -> practice -> practice_end -> trial -> end
@@ -97,18 +101,10 @@ def init_state():
     ss.setdefault("run_start_iso", "")
     ss.setdefault("is_admin", False)
     ss.setdefault("awaiting_response", False)
-    ss.setdefault("awaiting_ack", False)       # אחרי בחירה בניסוי – ממתין ללחיצה על "המשך"
-    ss.setdefault("last_feedback_html", "")    # טקסט משוב לאחר בחירה
-    ss.setdefault("saved_to_sheets", False)
+    ss.setdefault("last_feedback_html", "")  # משוב – לתרגול בלבד
 init_state()
 
 # ========= Admin =========
-def _admin_ui_enabled() -> bool:
-    try:
-        return (st.query_params.get("admin") == "1")
-    except Exception:
-        return (st.experimental_get_query_params().get("admin", ["0"])[0] == "1")
-
 def is_admin(show_ui: bool = False):
     show = show_ui or _admin_ui_enabled()
     if show:
@@ -157,15 +153,18 @@ def load_data():
 def _read_service_account_from_secrets() -> dict:
     try:
         sa = dict(st.secrets["service_account"])
-        if sa: return sa
+        if sa:
+            return sa
     except Exception:
         pass
     keys = ["type","project_id","private_key_id","private_key","client_email","client_id",
             "auth_uri","token_uri","auth_provider_x509_cert_url","client_x509_cert_url","universe_domain"]
     sa = {}
     for k in keys:
-        try: sa[k] = st.secrets[k]
-        except Exception: pass
+        try:
+            sa[k] = st.secrets[k]
+        except Exception:
+            pass
     if not sa:
         raise RuntimeError("Service Account לא נמצא ב-secrets.")
     return sa
@@ -215,8 +214,7 @@ def _ensure_participant_id():
         st.session_state.participant_id = f"S{int(time.time())}"
 
 def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
-    gc = _gs_client()
-    sh = gc.open_by_key(sheet_id)
+    gc = _gs_client(); sh = gc.open_by_key(sheet_id)
     try:
         ws = sh.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:
@@ -263,7 +261,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
             return pool_df.sample(frac=1, random_state=None).to_dict(orient="records")
         return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
 
-# === עזר: חילוץ ערכי/צבעי A..E מהשורה ===
+# === עזר: חילוץ A..E ===
 def _extract_option_values_and_colors(row: dict):
     letters = ["A","B","C","D","E"]
     vals = {}
@@ -325,19 +323,19 @@ def _render_graph_block(title_html, question_text, row_dict):
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
-        hovermode=False,
+        hovermode=False,             # סטטי – בלי טולטיפים
     )
 
     left, mid, right = st.columns([1,6,1])
     with mid:
         st.plotly_chart(
             fig,
-            use_container_width=True,          # דסקטופ רספונסיבי
-            config={"displayModeBar": False, "responsive": True, "staticPlot": True},  # סטטי למניעת ריצוד
+            use_container_width=True,
+            config={"displayModeBar": False, "responsive": True, "staticPlot": True},
         )
 
-def _answer_and_timer(timeout_sec, on_timeout, on_press):
-    """בוחר תשובה באמצעות segmented_control + טיימר חד-פעמי (ללא rerun מחזורי)."""
+def _segmented_answer_and_timer(timeout_sec, on_timeout, on_press):
+    """בחירה אופקית + טיימר חד-פעמי (ללא rerun מחזורי/האקים של JS)."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -347,29 +345,25 @@ def _answer_and_timer(timeout_sec, on_timeout, on_press):
         st.session_state.awaiting_response = False
         on_timeout(); st.stop()
 
-    # אותה עמודה של הגרף
     outer = st.columns([1,6,1])
     with outer[1]:
         st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
 
-        # Segmented control אופקי
         unique = f"seg_{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
         def _on_change():
-            if st.session_state.awaiting_response:
-                choice = st.session_state.get(unique)
-                if choice:
-                    st.session_state.awaiting_response = False
-                    on_press(str(choice))
-        st.segmented_control(
-            label="", options=["A","B","C","D","E"], key=unique, on_change=_on_change
-        )
+            choice = st.session_state.get(unique)
+            if st.session_state.awaiting_response and choice:
+                st.session_state.awaiting_response = False
+                on_press(str(choice))  # לא קוראים st.rerun כאן
 
-    # טיימר תצוגה + ריענון חד-פעמי בסוף
+        st.segmented_control(label="", options=["A","B","C","D","E"], key=unique, on_change=_on_change)
+
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    components.html(f"<script>setTimeout(()=>window.parent.location.reload(), {remain}*1000);</script>", height=0)
+    # ריענון חד-פעמי בסוף הזמן – ללא הבהובים
+    st_autorefresh(interval=remain*1000, limit=1, key=f"to_{unique}")
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
@@ -468,7 +462,7 @@ def _practice_one(idx: int):
             )
 
     if st.session_state.awaiting_response:
-        _answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+        _segmented_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
     else:
         center = st.columns([1,6,1])[1]
         with center:
@@ -498,24 +492,10 @@ def screen_practice_end():
             st.session_state.page = "trial"
             st.session_state.t_start = None
             st.session_state.awaiting_response = False
-            st.session_state.awaiting_ack = False
             st.session_state.last_feedback_html = ""
             st.rerun()
 
 def screen_trial():
-    if st.session_state.awaiting_ack and st.session_state.last_feedback_html:
-        mid = st.columns([1,6,1])[1]
-        with mid:
-            st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
-            if st.button("המשך", key=f"trial_ack_{st.session_state.i}"):
-                st.session_state.awaiting_ack = False
-                st.session_state.last_feedback_html = ""
-                if st.session_state.i + 1 < len(st.session_state.trials):
-                    st.session_state.i += 1; st.rerun()
-                else:
-                    st.session_state.page = "end"; st.rerun()
-        return
-
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
         st.session_state.awaiting_response = True
@@ -543,7 +523,6 @@ def screen_trial():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
-        st.session_state.awaiting_ack = False
         if st.session_state.i + 1 < len(st.session_state.trials):
             st.session_state.i += 1; st.rerun()
         else:
@@ -556,17 +535,15 @@ def screen_trial():
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
 
-        phrase = _correct_phrase(t.get("QuestionText", ""))
-        fb = (f"✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}."
-              if is_correct else "❌ לא מדויק — נסה/י שוב.")
-        st.session_state.last_feedback_html = f"<div style='text-align:center; margin:10px 0; font-weight:700;'>{fb}</div>"
-
+        # ללא משוב בניסוי – עוברים מיד הלאה
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
-        st.session_state.awaiting_ack = True
-        st.rerun()
+        if st.session_state.i + 1 < len(st.session_state.trials):
+            st.session_state.i += 1
+        else:
+            st.session_state.page = "end"
 
-    _answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+    _segmented_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_end():
     st.title("סיום הניסוי")
