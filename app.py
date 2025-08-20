@@ -6,7 +6,7 @@ import base64
 import requests
 import pandas as pd
 import streamlit as st
-from streamlit import st_autorefresh
+import streamlit.components.v1 as components  # <── רענון חד-פעמי ב-JS
 from PIL import Image
 from io import BytesIO
 
@@ -335,7 +335,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         )
 
 def _segmented_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """בחירה אופקית + טיימר חד-פעמי (ללא rerun מחזורי/האקים של JS)."""
+    """בחירה אופקית + טיימר חד-פעמי (ללא rerun מחזורי)."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -354,7 +354,7 @@ def _segmented_answer_and_timer(timeout_sec, on_timeout, on_press):
             choice = st.session_state.get(unique)
             if st.session_state.awaiting_response and choice:
                 st.session_state.awaiting_response = False
-                on_press(str(choice))  # לא קוראים st.rerun כאן
+                on_press(str(choice))  # אין st.rerun כאן – Streamlit מרענן לבד
 
         st.segmented_control(label="", options=["A","B","C","D","E"], key=unique, on_change=_on_change)
 
@@ -362,8 +362,12 @@ def _segmented_answer_and_timer(timeout_sec, on_timeout, on_press):
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    # ריענון חד-פעמי בסוף הזמן – ללא הבהובים
-    st_autorefresh(interval=remain*1000, limit=1, key=f"to_{unique}")
+    # רענון חד-פעמי בסוף הזמן (בלי תלות ב-st_autorefresh)
+    if remain > 0:
+        components.html(
+            f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
+            height=0,
+        )
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
@@ -540,8 +544,10 @@ def screen_trial():
         st.session_state.awaiting_response = False
         if st.session_state.i + 1 < len(st.session_state.trials):
             st.session_state.i += 1
+            st.rerun()
         else:
             st.session_state.page = "end"
+            st.rerun()
 
     _segmented_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
