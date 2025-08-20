@@ -73,7 +73,7 @@ div[data-testid="stRadio"] > div[role="radiogroup"]{
 }
 div[data-testid="stRadio"] > div[role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
-  min-width:72px; height:56px;        /* גודל הכפתור */
+  min-width:50px; height:56px;        /* גודל הכפתור */
   padding:0;
   background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
