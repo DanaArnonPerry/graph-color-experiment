@@ -59,11 +59,7 @@ st.markdown(
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* ייצוב מרווח הגרף כדי למנוע "קפיצות" */
-div[data-testid="stPlotlyChart"] { margin-bottom: 10px !important; }
-
-<style>
-/* מרווח קטן אחרי הגרף */
+/* מרווח קטן אחרי הגרף כדי למנוע "קפיצות" */
 div[data-testid="stPlotlyChart"]{ margin-bottom: 8px !important; }
 
 /* --- Answer Bar (שורה אחת, ממורכז) --- */
@@ -71,19 +67,19 @@ div[data-testid="stPlotlyChart"]{ margin-bottom: 8px !important; }
 #answerbar [data-testid="stRadio"]{ margin:0; }
 #answerbar [role="radiogroup"]{
   display:grid;
-  grid-template-columns: repeat(5, 72px);  /* רוחב קופסה */
+  grid-template-columns: repeat(5, 72px);
   justify-content:center; align-items:center;
-  gap:32px;                                  /* רווח בין הכפתורים */
+  gap:32px;
   padding:6px 0 2px;
   overflow:visible;
 }
 #answerbar [role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
-  width:72px; height:56px;                   /* גודל הכפתור */
+  width:72px; height:56px;
   padding:0;
   background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
-  font-weight:800; font-size:22px; color:#111;  /* אות שחורה */
+  font-weight:800; font-size:22px; color:#111;
   cursor:pointer; user-select:none;
 }
 #answerbar [role="radiogroup"] input[type="radio"]{
@@ -96,18 +92,16 @@ div[data-testid="stPlotlyChart"]{ margin-bottom: 8px !important; }
 
 /* מובייל – כפתורים מעט קטנים יותר כדי שייכנסו בשורה אחת וללא גלילה */
 @media (max-width: 768px){
-  #answerbar [role="radiogroup"]{
-    grid-template-columns: repeat(5, 56px);
-    gap:18px;
-  }
-  #answerbar [role="radiogroup"] label{
-    width:56px; height:48px; font-size:18px;
-  }
+  #answerbar [role="radiogroup"]{ grid-template-columns: repeat(5, 56px); gap:18px; }
+  #answerbar [role="radiogroup"] label{ width:56px; height:48px; font-size:18px; }
 }
 
 /* הסתרת fullscreen המובנה של Streamlit */
 button[title="View fullscreen"]{ display:none !important; }
 </style>
+""",
+    unsafe_allow_html=True,
+)
 
 # ========= Session State =========
 def _admin_ui_enabled() -> bool:
@@ -346,10 +340,10 @@ def _render_graph_block(title_html, question_text, row_dict):
         textposition="outside", texttemplate="<b>%{text}</b>",
         cliponaxis=False
     ))
-   # מספרים שחורים מעל העמודות
+    # מספרים שחורים מעל העמודות
     fig.update_traces(
-        textfont=dict(size=20, color="#111111"),     # ברירת מחדל
-        outsidetextfont=dict(size=20, color="#111")  # רלוונטי כשtextposition="outside"
+        textfont=dict(size=20, color="#111111"),
+        outsidetextfont=dict(size=20, color="#111")
     )
 
     fig.update_layout(
@@ -385,9 +379,19 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
             choice = st.session_state.get(unique)
             if st.session_state.awaiting_response and choice:
                 st.session_state.awaiting_response = False
-                on_press(str(choice))  # לא קוראים st.rerun כאן – Streamlit יריץ מחדש לבד
+                on_press(str(choice))  # אין st.rerun כאן
 
-        st.radio("", ["A","B","C","D","E"], key=unique, horizontal=True, index=None, on_change=_on_change)
+        # העטיפה שמפעילה את ה-CSS של answerbar (Grid)
+        st.markdown('<div id="answerbar">', unsafe_allow_html=True)
+        st.radio(
+            "בחר תשובה",
+            ["A","B","C","D","E"],
+            key=unique,
+            index=None,
+            label_visibility="collapsed",
+            on_change=_on_change
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
@@ -575,7 +579,7 @@ def screen_trial():
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
 
-        # אין משוב בניסוי, ואין st.rerun כאן (זה callback) – רק עדכון סטייט.
+        # אין משוב בניסוי
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.i + 1 < len(st.session_state.trials):
