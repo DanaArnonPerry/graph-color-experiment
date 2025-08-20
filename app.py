@@ -68,7 +68,7 @@ div[data-testid="stRadio"] > div[role="radiogroup"]{
   justify-content:center;             /* ממורכז */
   align-items:center;
   gap:32px;                           /* רווח בין כפתורים */
-  padding:2px 0 2px;
+  padding:-2px 0 2px;
   overflow:visible;
 }
 div[data-testid="stRadio"] > div[role="radiogroup"] label{
