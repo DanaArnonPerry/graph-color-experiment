@@ -63,43 +63,47 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"] { margin-bottom: 10px !important; }
 
 /* --- Action Buttons (Radio) --- */
-/* שורה אופקית ממורכזת עם רווחים */
+/* שורה אופקית ממורכזת, ללא פס גלילה; במסכים צרים מותר לרדת שורה */
 div[data-testid="stRadio"] > div[role="radiogroup"]{
-  display:flex; justify-content:center; align-items:center;
-  gap: 48px;           /* רווח בין הכפתורים */
-  flex-wrap: nowrap;   /* לא לרדת שורה */
-  overflow-x: auto;    /* גלילה עדינה אם צר */
-  padding: 8px 0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:48px;           /* רווח בין הכפתורים */
+  flex-wrap:wrap;     /* במקום nowrap – יורד שורה כשצר, בלי scrollbar */
+  overflow:visible;   /* מבטל גלילה אופקית */
+  padding:8px 0;
 }
 
-/* עיצוב הכפתורים – רק לאופציות בתוך ה-radiogroup (לא ל־label העליון הריק) */
+/* הכפתורים עצמם */
 div[data-testid="stRadio"] div[role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
-  min-width: 64px; min-height: 48px;
-  padding: 6px 18px;
-  background: #e5e7eb;
-  border: 1.5px solid #9ca3af;
-  border-radius: 10px;
-  box-shadow: 0 1px 0 rgba(0,0,0,.08);
-  font-weight: 700; font-size: 18px;
-  cursor: pointer; user-select: none;
+  min-width:64px; min-height:48px;
+  padding:6px 18px;
+  background:#e5e7eb;
+  border:1.5px solid #9ca3af;
+  border-radius:10px;
+  box-shadow:0 1px 0 rgba(0,0,0,.08);
+  font-weight:700; font-size:18px;
+  color:#111;                 /* האות A/B/C/D/E בשחור */
+  cursor:pointer; user-select:none;
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label:hover{ background:#f3f4f6; }
 
-/* החבאת עיגול ה-radio ושאר האייקונים הפנימיים */
+/* מסתיר את עיגול ה-radio/אייקונים – אבל לא את הטקסט */
 div[data-testid="stRadio"] div[role="radiogroup"] input[type="radio"]{
   position:absolute; opacity:0; width:0; height:0; pointer-events:none;
 }
-/* ברוב גרסאות Streamlit יש div/ico לפני הטקסט – מחביאים אותו */
-div[data-testid="stRadio"] div[role="radiogroup"] label > div:not([data-testid="stMarkdownContainer"]){
-  display:none;
+div[data-testid="stRadio"] div[role="radiogroup"] label svg,
+div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stIcon"]{
+  display:none !important;
 }
 
-/* מצב בחירה */
+/* מצב בחור/ה */
 div[data-testid="stRadio"] div[role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#d1d5db;
   border-color:#6b7280;
-  box-shadow: inset 0 0 0 2px #9ca3af33;
+  box-shadow:inset 0 0 0 2px #9ca3af33;
+  color:#111;
 }
 
 
