@@ -59,18 +59,26 @@ st.markdown(
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* מרווח קטן אחרי הגרף כדי למנוע "קפיצות" ולקרב את הכפתורים */
+/* לקרב את שורת הכפתורים לגרף */
 div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
 
-/* --- Answer Dots מיושרות תחת A..E --- */
+/* --- Answer dots מיושרות בדיוק מתחת ל-A..E --- */
 #answerbar{ display:flex; justify-content:center; }
 #answerbar [data-testid="stRadio"]{ width:100%; max-width:100%; margin:0; }
 #answerbar [role="radiogroup"]{
-  display:grid; grid-template-columns:repeat(5, 1fr);  /* 5 תאים שווים */
-  width:100%; justify-items:center; align-items:center;
-  gap:0; padding:0; margin:0; overflow:visible;
+  /* אוכפים אופקי כתצורת ברירת מחדל */
+  display:grid !important;
+  grid-template-columns: repeat(5, 1fr) !important; /* 5 תאים שווים */
+  justify-items:center !important; align-items:center !important;
+  gap:0 !important; padding:0 !important; margin:0 !important; overflow:visible !important;
 }
-/* הופכים את הלייבלים לנקודות עגולות ומסתירים את הטקסט הפנימי */
+
+/* מסתירים את עיגול הרדיו המקורי */
+#answerbar [role="radiogroup"] input[type="radio"]{
+  position:absolute; opacity:0; pointer-events:none; width:0; height:0;
+}
+
+/* נקודות עגולות */
 #answerbar [role="radiogroup"] label{
   width:34px; height:34px; border-radius:50%;
   background:#e5e7eb; border:2px solid #9ca3af;
@@ -78,16 +86,12 @@ div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
   font-size:0; line-height:0; user-select:none; cursor:pointer;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
 }
-/* מסתירים את עיגול הרדיו המקורי */
-#answerbar [role="radiogroup"] input[type="radio"]{
-  position:absolute; opacity:0; pointer-events:none; width:0; height:0;
-}
 #answerbar [role="radiogroup"] label:hover{ background:#f3f4f6; }
 #answerbar [role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
 }
 
-/* מובייל – נקודות מעט קטנות יותר כדי להישאר בשורה אחת */
+/* מובייל – נקודות מעט קטנות יותר */
 @media (max-width:768px){
   #answerbar [role="radiogroup"] label{ width:28px; height:28px; }
 }
@@ -229,7 +233,7 @@ def _ensure_participant_id():
         return
     try:
         seq = get_next_participant_seq(GSHEET_ID)
-        st.session_state.participant_id = f"S{seq:05d}"
+        st.session_state.participant_id = f"S{seq:05d}"`
     except Exception:
         st.session_state.participant_id = f"S{int(time.time())}"
 
@@ -368,22 +372,23 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     outer = st.columns([1,6,1])
     with outer[1]:
-        unique = f"radio_{st.session_state.page}_{st.session_state.i}_{int(st.session_state.t_start or 0)}"
+        # מפתח יציב (ללא timestamp) מונע כפתור חדש בכל ריצה ולכן לא "נופל" לאנכי
+        unique = f"radio_{st.session_state.page}_{st.session_state.i}"
 
         def _on_change():
             choice = st.session_state.get(unique)
             if st.session_state.awaiting_response and choice:
                 st.session_state.awaiting_response = False
-                on_press(str(choice))  # אין st.rerun כאן; Streamlit מבצע רענון בעצמו
+                on_press(str(choice))
 
-        # עוטפים את ה-radio כדי שה-CSS יישם גריד של 5 תאים
+        # עוטפים את ה-radio כדי שה-CSS יישם גריד של 5 תאים מתחת לגרף
         st.markdown('<div id="answerbar">', unsafe_allow_html=True)
         st.radio(
             "", ["A","B","C","D","E"],
             key=unique,
             index=None,
             label_visibility="collapsed",
-            horizontal=False,            # הגריד דואג לפריסה אופקית ויישור תחת A..E
+            horizontal=True,  # חיזוק נוסף לאופקי
             on_change=_on_change
         )
         st.markdown('</div>', unsafe_allow_html=True)
