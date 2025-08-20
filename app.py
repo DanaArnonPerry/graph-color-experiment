@@ -331,36 +331,38 @@ def render_answer_bar(
     options=("A","B","C","D","E"),
     on_change=None,
     # עיצוב/גודל – ניתן לשנות כרצונך (רספונסיבי):
-    size="clamp(44px, 6.2vw, 64px)",   # רוחב/גובה כל כפתור
-    gap="clamp(12px, 2.0vw, 28px)",    # רווח בין הכפתורים
-    font="clamp(16px, 2.2vw, 22px)",   # גודל אות בתוך הכפתור (אם תרצי אות במקום נקודה)
+    size="clamp(36px, 5.5vw, 56px)",   # קוטר/גובה הכפתור
+    gap="clamp(10px, 1.8vw, 24px)",    # רווח אופקי בין הכפתורים
+    font="clamp(16px, 2.1vw, 20px)",   # גודל אות אם מציגים אות
     weight=800,                        # משקל גופן
     shape="circle",                    # "circle" / "pill" / "square"
     top_margin_px=4,                   # מרחק מהגרף
     bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
-    show_letter=False                  # אם True – מציג את האות בתוך הכפתור במקום נקודה
+    show_letter=False                  # True כדי להציג את האות בתוך הכפתור
 ):
     radius = {"pill":"10px", "square":"6px", "circle":"9999px"}.get(str(shape).lower(), "10px")
     uid = f"ab_{key}"
 
+    # CSS ייחודי לשורה הזו (ע"י id)
     st.markdown(f"""
     <style>
-    /* גריד של N עמודות -> תמיד אופקי; רספונסיבי עם clamp() */
+    /* 5/len(options) תאים שווים -> יישור מתחת ל-A..E */
     #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
         display: grid !important;
-        grid-auto-flow: column !important;
-        grid-template-columns: repeat({len(options)}, {size});
-        justify-content: center; align-items: center;
-        gap: {gap}; padding: 0; margin: 0;
-        overflow: visible;
+        grid-template-columns: repeat({len(options)}, 1fr) !important;
+        justify-items: center !important;
+        align-items: center !important;
+        column-gap: {gap}; row-gap: 0;
+        padding: 0; margin: 0; overflow: visible;
     }}
     /* הכפתור עצמו */
     #{uid} [role="radiogroup"] label {{
-        display: flex; align-items: center; justify-content: center;
+        place-self: center;
         width: {size}; height: {size};
         border-radius: {radius};
         background: {bg}; border: 1.5px solid {border};
         box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        display: flex; align-items: center; justify-content: center;
         font-weight: {weight}; font-size: {font}; color: #111;
         cursor: pointer; user-select: none;
         {"font-size:0; line-height:0;" if not show_letter else ""}
@@ -377,19 +379,17 @@ def render_answer_bar(
     </style>
     """, unsafe_allow_html=True)
 
-    # עוטפים ב-div ייעודי כדי שה-CSS יחול רק על השורה הזו
-    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px"></div>', unsafe_allow_html=True)
-    with st.container():
-        st.markdown(f'<div id="{uid}">', unsafe_allow_html=True)
-        st.radio(
-            "", options,
-            key=key,
-            index=None,
-            label_visibility="collapsed",
-            horizontal=False,   # אנחנו כופים אופקי דרך Grid – לא סומכים על horizontal
-            on_change=on_change
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # עוטפים פעם אחת עם id + מרווח מהגרף
+    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
+    st.radio(
+        "", options,
+        key=key,
+        index=None,
+        label_visibility="collapsed",
+        horizontal=False,   # הפריסה נכפת ע"י ה-Grid
+        on_change=on_change
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # === כפתורי פעולה + טיימר ללא rerun בתוך callback ===
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
@@ -404,7 +404,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     outer = st.columns([1,6,1])
     with outer[1]:
-        # מפתח יציב (ללא timestamp) – מונע יצירה מחדש על כל ריץ'
+        # key יציב – מונע יצירה מחדש בכל ריצה ולכן לא "נופל" לאנכי
         unique = f"radio_{st.session_state.page}_{st.session_state.i}"
 
         def _on_change():
@@ -418,14 +418,14 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
             key=unique,
             options=("A","B","C","D","E"),
             on_change=_on_change,
-            # התאמות ברירת מחדל שנראות טוב במובייל/דסקטופ:
+            # אפשר לכוון גודל/מרווח/צורה כאן:
             size="clamp(36px, 5.5vw, 56px)",
             gap="clamp(10px, 1.8vw, 24px)",
             font="clamp(16px, 2.1vw, 20px)",
             weight=800,
-            shape="circle",          # "pill" כדי לקבל כפתורים מלבניים מעוגלים
+            shape="circle",          # "pill" לקבל מלבניים מעוגלים
             top_margin_px=4,
-            show_letter=False        # אם תרצי אות בתוך הכפתור -> True
+            show_letter=False
         )
 
     st.markdown(
