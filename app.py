@@ -63,33 +63,20 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"] { margin-bottom: 10px !important; }
 
 /* --- Action Buttons (Radio) --- */
-/* שורה אופקית ממורכזת, ללא פס גלילה; במסכים צרים מותר לרדת שורה */
 div[data-testid="stRadio"] > div[role="radiogroup"]{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:48px;           /* רווח בין הכפתורים */
-  flex-wrap:wrap;     /* במקום nowrap – יורד שורה כשצר, בלי scrollbar */
-  overflow:visible;   /* מבטל גלילה אופקית */
-  padding:8px 0;
+  display:flex; justify-content:center; align-items:center;
+  gap:48px; flex-wrap:wrap; overflow:visible; padding:8px 0;
 }
-
-/* הכפתורים עצמם */
 div[data-testid="stRadio"] div[role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
   min-width:64px; min-height:48px;
   padding:6px 18px;
-  background:#e5e7eb;
-  border:1.5px solid #9ca3af;
-  border-radius:10px;
+  background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
-  font-weight:700; font-size:18px;
-  color:#111;                 /* האות A/B/C/D/E בשחור */
+  font-weight:700; font-size:18px; color:#111;
   cursor:pointer; user-select:none;
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label:hover{ background:#f3f4f6; }
-
-/* מסתיר את עיגול ה-radio/אייקונים – אבל לא את הטקסט */
 div[data-testid="stRadio"] div[role="radiogroup"] input[type="radio"]{
   position:absolute; opacity:0; width:0; height:0; pointer-events:none;
 }
@@ -97,17 +84,11 @@ div[data-testid="stRadio"] div[role="radiogroup"] label svg,
 div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stIcon"]{
   display:none !important;
 }
-
-/* מצב בחור/ה */
 div[data-testid="stRadio"] div[role="radiogroup"] label:has(input[type="radio"]:checked){
-  background:#d1d5db;
-  border-color:#6b7280;
-  box-shadow:inset 0 0 0 2px #9ca3af33;
-  color:#111;
+  background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33; color:#111;
 }
 
-
-/* מובייל: הגרף לא רספונסיבי – גלילה אופקית במידת הצורך */
+/* מובייל: אם צר מאוד – הגרף מינ' רוחב וגלילה על הבלוק, לא על הכפתורים */
 @media (max-width: 768px){
   main .block-container { overflow-x:auto; }
   div[data-testid="stPlotlyChart"] { min-width: 620px; }
@@ -331,7 +312,7 @@ def _correct_phrase(question_text: str) -> str:
     if ("גבוה" in q) or ("highest" in q.lower()): return "עם הערך הגבוה ביותר"
     return "התשובה הנכונה"
 
-# === גרף Plotly ===
+# === גרף Plotly (סטטי) ===
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
@@ -364,18 +345,15 @@ def _render_graph_block(title_html, question_text, row_dict):
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
-        hovermode=False,             # סטטי – בלי טולטיפים
+        hovermode=False,
     )
 
     left, mid, right = st.columns([1,6,1])
     with mid:
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-            config={"displayModeBar": False, "responsive": True, "staticPlot": True},
-        )
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# === כפתורי פעולה בסגנון "קופסאות אפורות" ===
+# === כפתורי פעולה + טיימר ללא rerun בתוך callback ===
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
         return
@@ -394,23 +372,14 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
             choice = st.session_state.get(unique)
             if st.session_state.awaiting_response and choice:
                 st.session_state.awaiting_response = False
-                on_press(str(choice))  # אין st.rerun כאן
+                on_press(str(choice))  # לא קוראים st.rerun כאן – Streamlit יריץ מחדש לבד
 
-        # ממורכז + אופקי; index=None כדי שלא תהיה בחירה אוטומטית
-        st.radio(
-            label="",
-            options=["A","B","C","D","E"],
-            key=unique,
-            horizontal=True,
-            index=None,
-            on_change=_on_change,
-        )
+        st.radio("", ["A","B","C","D","E"], key=unique, horizontal=True, index=None, on_change=_on_change)
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    # רענון חד-פעמי בסוף הזמן
     if remain > 0:
         components.html(
             f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
@@ -458,22 +427,28 @@ def screen_welcome():
     except Exception as e:
         st.error(str(e)); st.stop()
 
+    total_rows = len(df)
+    if total_rows < 2:
+        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
+    if total_rows < 2 + N_TRIALS:
+        st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום 40. נריץ את הקיים.")
+
     if st.button("המשך לתרגול"):
         _ensure_participant_id()
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
+        n_trials_final = min(N_TRIALS, max(0, total_rows - 2))
         practice_items = df.iloc[:2].to_dict(orient="records")
-        pool_df = df.iloc[2: 2 + N_TRIALS].copy()
-        trials = build_alternating_trials(pool_df, N_TRIALS)
+        pool_df = df.iloc[2: 2 + n_trials_final].copy()
+        trials = build_alternating_trials(pool_df, n_trials_final)
 
         st.session_state.df = df
         st.session_state.practice_list = practice_items
-        st.session_state.practice_idx = 0
         st.session_state.trials = trials
+        st.session_state.practice_idx = 0
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
-        st.session_state.saved_to_sheets = False
         st.session_state.page = "practice"
         st.rerun()
 
@@ -587,13 +562,13 @@ def screen_trial():
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
 
-        # ללא משוב בניסוי – עוברים מיד הלאה
+        # אין משוב בניסוי, ואין st.rerun כאן (זה callback) – רק עדכון סטייט.
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1; st.rerun()
+            st.session_state.i += 1
         else:
-            st.session_state.page = "end"; st.rerun()
+            st.session_state.page = "end"
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
@@ -604,20 +579,17 @@ def screen_end():
     df = pd.DataFrame(st.session_state.results)
     admin = is_admin()
 
-    if not st.session_state.saved_to_sheets and not df.empty:
+    if df.empty:
+        st.info("לא נאספו תוצאות.")
+    else:
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.session_state.saved_to_sheets = True
             st.success("התשובות נשלחו בהצלחה ✅")
-            if admin:
-                st.caption("נשמר ל-Google Sheets (למנהל/ת בלבד).")
         except Exception as e:
             if admin:
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
             else:
                 st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
-    else:
-        st.success("התשובות נשלחו בהצלחה ✅")
 
     st.markdown(
         f"""
@@ -637,7 +609,7 @@ def screen_end():
     elif WEBSITE_URL:
         st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
 
-    if admin:
+    if admin and not df.empty:
         st.download_button(
             "הורדת תוצאות (CSV)",
             data=df.to_csv(index=False, encoding="utf-8-sig"),
