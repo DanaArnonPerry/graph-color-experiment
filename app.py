@@ -60,43 +60,9 @@ html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Ru
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* לקרב את שורת הכפתורים לגרף */
-div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
+div[data-testid="stPlotlyChart"]{ margin-bottom: 6px !important; }
 
-/* --- Answer dots מיושרות בדיוק מתחת ל-A..E --- */
-#answerbar{ display:flex; justify-content:center; }
-#answerbar [data-testid="stRadio"]{ width:100%; max-width:100%; margin:0; }
-#answerbar [role="radiogroup"]{
-  /* אוכפים אופקי כתצורת ברירת מחדל */
-  display:grid !important;
-  grid-template-columns: repeat(5, 1fr) !important; /* 5 תאים שווים */
-  justify-items:center !important; align-items:center !important;
-  gap:0 !important; padding:0 !important; margin:0 !important; overflow:visible !important;
-}
-
-/* מסתירים את עיגול הרדיו המקורי */
-#answerbar [role="radiogroup"] input[type="radio"]{
-  position:absolute; opacity:0; pointer-events:none; width:0; height:0;
-}
-
-/* נקודות עגולות */
-#answerbar [role="radiogroup"] label{
-  width:34px; height:34px; border-radius:50%;
-  background:#e5e7eb; border:2px solid #9ca3af;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:0; line-height:0; user-select:none; cursor:pointer;
-  box-shadow:0 1px 0 rgba(0,0,0,.08);
-}
-#answerbar [role="radiogroup"] label:hover{ background:#f3f4f6; }
-#answerbar [role="radiogroup"] label:has(input[type="radio"]:checked){
-  background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
-}
-
-/* מובייל – נקודות מעט קטנות יותר */
-@media (max-width:768px){
-  #answerbar [role="radiogroup"] label{ width:28px; height:28px; }
-}
-
-/* הסתרת fullscreen המובנה של Streamlit */
+/* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"]{ display:none !important; }
 </style>
 """,
@@ -359,6 +325,72 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
+# === שורת כפתורים אופקית: פונקציה גמישה לעיצוב ===
+def render_answer_bar(
+    key: str,
+    options=("A","B","C","D","E"),
+    on_change=None,
+    # עיצוב/גודל – ניתן לשנות כרצונך (רספונסיבי):
+    size="clamp(44px, 6.2vw, 64px)",   # רוחב/גובה כל כפתור
+    gap="clamp(12px, 2.0vw, 28px)",    # רווח בין הכפתורים
+    font="clamp(16px, 2.2vw, 22px)",   # גודל אות בתוך הכפתור (אם תרצי אות במקום נקודה)
+    weight=800,                        # משקל גופן
+    shape="circle",                    # "circle" / "pill" / "square"
+    top_margin_px=4,                   # מרחק מהגרף
+    bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
+    show_letter=False                  # אם True – מציג את האות בתוך הכפתור במקום נקודה
+):
+    radius = {"pill":"10px", "square":"6px", "circle":"9999px"}.get(str(shape).lower(), "10px")
+    uid = f"ab_{key}"
+
+    st.markdown(f"""
+    <style>
+    /* גריד של N עמודות -> תמיד אופקי; רספונסיבי עם clamp() */
+    #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
+        display: grid !important;
+        grid-auto-flow: column !important;
+        grid-template-columns: repeat({len(options)}, {size});
+        justify-content: center; align-items: center;
+        gap: {gap}; padding: 0; margin: 0;
+        overflow: visible;
+    }}
+    /* הכפתור עצמו */
+    #{uid} [role="radiogroup"] label {{
+        display: flex; align-items: center; justify-content: center;
+        width: {size}; height: {size};
+        border-radius: {radius};
+        background: {bg}; border: 1.5px solid {border};
+        box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        font-weight: {weight}; font-size: {font}; color: #111;
+        cursor: pointer; user-select: none;
+        {"font-size:0; line-height:0;" if not show_letter else ""}
+    }}
+    /* מסתירים את רדיו המקורי */
+    #{uid} [role="radiogroup"] input[type="radio"] {{
+        position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;
+    }}
+    #{uid} [role="radiogroup"] label:hover {{ filter: brightness(1.03); }}
+    #{uid} [role="radiogroup"] label:has(input[type="radio"]:checked) {{
+        background: {active_bg}; border-color: {active_border};
+        box-shadow: inset 0 0 0 2px #9ca3af33;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    # עוטפים ב-div ייעודי כדי שה-CSS יחול רק על השורה הזו
+    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px"></div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown(f'<div id="{uid}">', unsafe_allow_html=True)
+        st.radio(
+            "", options,
+            key=key,
+            index=None,
+            label_visibility="collapsed",
+            horizontal=False,   # אנחנו כופים אופקי דרך Grid – לא סומכים על horizontal
+            on_change=on_change
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+
 # === כפתורי פעולה + טיימר ללא rerun בתוך callback ===
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
@@ -372,7 +404,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     outer = st.columns([1,6,1])
     with outer[1]:
-        # מפתח יציב (ללא timestamp) מונע כפתור חדש בכל ריצה ולכן לא "נופל" לאנכי
+        # מפתח יציב (ללא timestamp) – מונע יצירה מחדש על כל ריץ'
         unique = f"radio_{st.session_state.page}_{st.session_state.i}"
 
         def _on_change():
@@ -381,17 +413,20 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
                 st.session_state.awaiting_response = False
                 on_press(str(choice))
 
-        # עוטפים את ה-radio כדי שה-CSS יישם גריד של 5 תאים מתחת לגרף
-        st.markdown('<div id="answerbar">', unsafe_allow_html=True)
-        st.radio(
-            "", ["A","B","C","D","E"],
+        # שורת תשובות אופקית, גמישה לעיצוב:
+        render_answer_bar(
             key=unique,
-            index=None,
-            label_visibility="collapsed",
-            horizontal=True,  # חיזוק נוסף לאופקי
-            on_change=_on_change
+            options=("A","B","C","D","E"),
+            on_change=_on_change,
+            # התאמות ברירת מחדל שנראות טוב במובייל/דסקטופ:
+            size="clamp(36px, 5.5vw, 56px)",
+            gap="clamp(10px, 1.8vw, 24px)",
+            font="clamp(16px, 2.1vw, 20px)",
+            weight=800,
+            shape="circle",          # "pill" כדי לקבל כפתורים מלבניים מעוגלים
+            top_margin_px=4,
+            show_letter=False        # אם תרצי אות בתוך הכפתור -> True
         )
-        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
