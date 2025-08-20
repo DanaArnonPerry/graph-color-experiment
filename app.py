@@ -338,7 +338,12 @@ def _render_graph_block(title_html, question_text, row_dict):
         textposition="outside", texttemplate="<b>%{text}</b>",
         cliponaxis=False
     ))
-    fig.update_traces(textfont=dict(size=20))
+   # מספרים שחורים מעל העמודות
+fig.update_traces(
+    textfont=dict(size=20, color="#111111"),     # ברירת מחדל
+    outsidetextfont=dict(size=20, color="#111")  # רלוונטי כשtextposition="outside"
+)
+
     fig.update_layout(
         margin=dict(l=20, r=20, t=50, b=0),
         showlegend=False, bargap=0.35,
