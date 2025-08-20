@@ -233,7 +233,7 @@ def _ensure_participant_id():
         return
     try:
         seq = get_next_participant_seq(GSHEET_ID)
-        st.session_state.participant_id = f"S{seq:05d}"`
+        st.session_state.participant_id = f"S{seq:05d}"
     except Exception:
         st.session_state.participant_id = f"S{int(time.time())}"
 
