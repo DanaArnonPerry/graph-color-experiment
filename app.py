@@ -62,44 +62,52 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 /* ייצוב מרווח הגרף כדי למנוע "קפיצות" */
 div[data-testid="stPlotlyChart"] { margin-bottom: 10px !important; }
 
-/* --- Action Buttons (Radio) --- */
-div[data-testid="stRadio"] > div[role="radiogroup"]{
-  display:flex; justify-content:center; align-items:center;
-  gap:48px; flex-wrap:wrap; overflow:visible; padding:8px 0;
+<style>
+/* מרווח קטן אחרי הגרף */
+div[data-testid="stPlotlyChart"]{ margin-bottom: 8px !important; }
+
+/* --- Answer Bar (שורה אחת, ממורכז) --- */
+#answerbar{ display:flex; justify-content:center; }
+#answerbar [data-testid="stRadio"]{ margin:0; }
+#answerbar [role="radiogroup"]{
+  display:grid;
+  grid-template-columns: repeat(5, 72px);  /* רוחב קופסה */
+  justify-content:center; align-items:center;
+  gap:32px;                                  /* רווח בין הכפתורים */
+  padding:6px 0 2px;
+  overflow:visible;
 }
-div[data-testid="stRadio"] div[role="radiogroup"] label{
+#answerbar [role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
-  min-width:64px; min-height:48px;
-  padding:6px 18px;
+  width:72px; height:56px;                   /* גודל הכפתור */
+  padding:0;
   background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
-  font-weight:700; font-size:18px; color:#111;
+  font-weight:800; font-size:22px; color:#111;  /* אות שחורה */
   cursor:pointer; user-select:none;
 }
-div[data-testid="stRadio"] div[role="radiogroup"] label:hover{ background:#f3f4f6; }
-div[data-testid="stRadio"] div[role="radiogroup"] input[type="radio"]{
-  position:absolute; opacity:0; width:0; height:0; pointer-events:none;
+#answerbar [role="radiogroup"] input[type="radio"]{
+  position:absolute; opacity:0; pointer-events:none;
 }
-div[data-testid="stRadio"] div[role="radiogroup"] label svg,
-div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stIcon"]{
-  display:none !important;
-}
-div[data-testid="stRadio"] div[role="radiogroup"] label:has(input[type="radio"]:checked){
-  background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33; color:#111;
+#answerbar [role="radiogroup"] label:hover{ background:#f3f4f6; }
+#answerbar [role="radiogroup"] label:has(input[type="radio"]:checked]){
+  background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
 }
 
-/* מובייל: אם צר מאוד – הגרף מינ' רוחב וגלילה על הבלוק, לא על הכפתורים */
+/* מובייל – כפתורים מעט קטנים יותר כדי שייכנסו בשורה אחת וללא גלילה */
 @media (max-width: 768px){
-  main .block-container { overflow-x:auto; }
-  div[data-testid="stPlotlyChart"] { min-width: 620px; }
+  #answerbar [role="radiogroup"]{
+    grid-template-columns: repeat(5, 56px);
+    gap:18px;
+  }
+  #answerbar [role="radiogroup"] label{
+    width:56px; height:48px; font-size:18px;
+  }
 }
 
-/* הסתרת fullscreen של Streamlit */
-button[title="View fullscreen"] { display: none !important; }
+/* הסתרת fullscreen המובנה של Streamlit */
+button[title="View fullscreen"]{ display:none !important; }
 </style>
-""",
-    unsafe_allow_html=True,
-)
 
 # ========= Session State =========
 def _admin_ui_enabled() -> bool:
