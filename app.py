@@ -56,44 +56,49 @@ st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפ�
 st.markdown(
     """
 <style>
+/* RTL + גופן */
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* מרווח קטן אחרי הגרף כדי למנוע "קפיצות" */
-div[data-testid="stPlotlyChart"]{ margin-bottom: 8px !important; }
+/* מרווח קטן אחרי הגרף – מצמצם את הרווח לפני הכפתורים */
+div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
 
-/* --- עיצוב אוניברסלי לשורת התשובות (st.radio) --- */
-div[data-testid="stRadio"] > div[role="radiogroup"]{
-  display:flex;                       /* אופקי */
-  justify-content:center;             /* ממורכז */
-  align-items:center;
-  gap:32px;                           /* רווח בין כפתורים */
-  padding:0px 0 2px;
+/* --- Answer Bar (מוחל רק על השורה שמכילה את הכפתורים) --- */
+#answerbar{ display:flex; justify-content:center; margin-top:0; }
+#answerbar [data-testid="stRadio"]{ margin:0; }
+#answerbar [role="radiogroup"]{
+  display:grid;
+  grid-template-columns: repeat(5, 72px);   /* 5 כפתורים בשורה אחת */
+  justify-content:center; align-items:center;
+  gap:24px;                                  /* רווח בין הכפתורים */
+  padding:0;                                 /* להצמיד לגרף */
   overflow:visible;
 }
-div[data-testid="stRadio"] > div[role="radiogroup"] label{
+#answerbar [role="radiogroup"] label{
   display:flex; align-items:center; justify-content:center;
-  min-width:50px; height:56px;        /* גודל הכפתור */
-  padding:0;
+  width:72px; height:56px;                   /* גודל הכפתור */
   background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
-  font-weight:800; font-size:22px; color:#111; /* האות בשחור */
+  font-weight:800; font-size:22px; color:#111;   /* האות בשחור */
   cursor:pointer; user-select:none;
 }
 /* מסתירים את עיגול הרדיו המקורי */
-div[data-testid="stRadio"] input[type="radio"]{
+#answerbar [role="radiogroup"] input[type="radio"]{
   position:absolute; opacity:0; pointer-events:none; width:0; height:0;
 }
-div[data-testid="stRadio"] > div[role="radiogroup"] label:hover{ background:#f3f4f6; }
-div[data-testid="stRadio"] > div[role="radiogroup"] label:has(input[type="radio"]:checked){
+#answerbar [role="radiogroup"] label:hover{ background:#f3f4f6; }
+#answerbar [role="radiogroup"] label:has(input[type="radio"]:checked){
   background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
 }
 
-/* מובייל – מעט יותר קטן כדי להיכנס בשורה אחת */
+/* מובייל – קטן יותר כדי שייכנס תמיד בשורה אחת */
 @media (max-width: 768px){
-  div[data-testid="stRadio"] > div[role="radiogroup"]{ gap:18px; }
-  div[data-testid="stRadio"] > div[role="radiogroup"] label{
-    min-width:56px; height:48px; font-size:18px;
+  #answerbar [role="radiogroup"]{
+    grid-template-columns: repeat(5, 56px);
+    gap:16px;
+  }
+  #answerbar [role="radiogroup"] label{
+    width:56px; height:48px; font-size:18px;
   }
 }
 
@@ -382,26 +387,28 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
                 st.session_state.awaiting_response = False
                 on_press(str(choice))  # אין st.rerun כאן; Streamlit מבצע רענון בעצמו
 
+        # עוטפים ב־#answerbar כדי שה-CSS יחול רק כאן
+        st.markdown('<div id="answerbar">', unsafe_allow_html=True)
         st.radio(
-            "בחר תשובה",
-            ["A","B","C","D","E"],
+            "", ["A","B","C","D","E"],
             key=unique,
             index=None,
             label_visibility="collapsed",
-            horizontal=True,       # <<< גורם לפריסה אופקית כברירת מחדל
+            horizontal=True,
             on_change=_on_change
         )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
+    # רענון יחיד בסוף הטיימר (ללא הבהובים)
     if remain > 0:
         components.html(
             f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
             height=0,
         )
-
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
