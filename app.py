@@ -56,31 +56,27 @@ st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפ�
 st.markdown(
     """
 <style>
-/* RTL + גופן */
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* מרווח קטן אחרי הגרף – מצמצם את הרווח לפני הכפתורים */
+/* מרווח קטן אחרי הגרף כדי למנוע "קפיצות" ולקרב את הכפתורים */
 div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
 
-/* --- Answer Bar (מוחל רק על השורה שמכילה את הכפתורים) --- */
-#answerbar{ display:flex; justify-content:center; margin-top:0; }
-#answerbar [data-testid="stRadio"]{ margin:0; }
+/* --- Answer Dots מיושרות תחת A..E --- */
+#answerbar{ display:flex; justify-content:center; }
+#answerbar [data-testid="stRadio"]{ width:100%; max-width:100%; margin:0; }
 #answerbar [role="radiogroup"]{
-  display:grid;
-  grid-template-columns: repeat(5, 72px);   /* 5 כפתורים בשורה אחת */
-  justify-content:center; align-items:center;
-  gap:24px;                                  /* רווח בין הכפתורים */
-  padding:0;                                 /* להצמיד לגרף */
-  overflow:visible;
+  display:grid; grid-template-columns:repeat(5, 1fr);  /* 5 תאים שווים */
+  width:100%; justify-items:center; align-items:center;
+  gap:0; padding:0; margin:0; overflow:visible;
 }
+/* הופכים את הלייבלים לנקודות עגולות ומסתירים את הטקסט הפנימי */
 #answerbar [role="radiogroup"] label{
-  display:flex; align-items:center; justify-content:center;
-  width:72px; height:56px;                   /* גודל הכפתור */
-  background:#e5e7eb; border:1.5px solid #9ca3af; border-radius:10px;
+  width:34px; height:34px; border-radius:50%;
+  background:#e5e7eb; border:2px solid #9ca3af;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:0; line-height:0; user-select:none; cursor:pointer;
   box-shadow:0 1px 0 rgba(0,0,0,.08);
-  font-weight:800; font-size:22px; color:#111;   /* האות בשחור */
-  cursor:pointer; user-select:none;
 }
 /* מסתירים את עיגול הרדיו המקורי */
 #answerbar [role="radiogroup"] input[type="radio"]{
@@ -91,15 +87,9 @@ div[data-testid="stPlotlyChart"]{ margin-bottom: 4px !important; }
   background:#d1d5db; border-color:#6b7280; box-shadow:inset 0 0 0 2px #9ca3af33;
 }
 
-/* מובייל – קטן יותר כדי שייכנס תמיד בשורה אחת */
-@media (max-width: 768px){
-  #answerbar [role="radiogroup"]{
-    grid-template-columns: repeat(5, 56px);
-    gap:16px;
-  }
-  #answerbar [role="radiogroup"] label{
-    width:56px; height:48px; font-size:18px;
-  }
+/* מובייל – נקודות מעט קטנות יותר כדי להישאר בשורה אחת */
+@media (max-width:768px){
+  #answerbar [role="radiogroup"] label{ width:28px; height:28px; }
 }
 
 /* הסתרת fullscreen המובנה של Streamlit */
@@ -351,7 +341,6 @@ def _render_graph_block(title_html, question_text, row_dict):
         textfont=dict(size=20, color="#111111"),
         outsidetextfont=dict(size=20, color="#111")
     )
-
     fig.update_layout(
         margin=dict(l=20, r=20, t=50, b=0),
         showlegend=False, bargap=0.35,
@@ -387,14 +376,14 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
                 st.session_state.awaiting_response = False
                 on_press(str(choice))  # אין st.rerun כאן; Streamlit מבצע רענון בעצמו
 
-        # עוטפים ב־#answerbar כדי שה-CSS יחול רק כאן
+        # עוטפים את ה-radio כדי שה-CSS יישם גריד של 5 תאים
         st.markdown('<div id="answerbar">', unsafe_allow_html=True)
         st.radio(
             "", ["A","B","C","D","E"],
             key=unique,
             index=None,
             label_visibility="collapsed",
-            horizontal=True,
+            horizontal=False,            # הגריד דואג לפריסה אופקית ויישור תחת A..E
             on_change=_on_change
         )
         st.markdown('</div>', unsafe_allow_html=True)
@@ -403,7 +392,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    # רענון יחיד בסוף הטיימר (ללא הבהובים)
+    # רענון יחיד בסיום הטיימר (ללא הבהובים)
     if remain > 0:
         components.html(
             f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
