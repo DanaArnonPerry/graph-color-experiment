@@ -60,7 +60,8 @@ html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Ru
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* לקרב את שורת הכפתורים לגרף */
-div[data-testid="stPlotlyChart"]{ margin-bottom: 6px !important; }
+div[data-testid="stPlotlyChart"]{ margin-bottom: 0 !important; }
+h3 { margin-bottom: 8px !important; }
 
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"]{ display:none !important; }
@@ -287,7 +288,8 @@ def _correct_phrase(question_text: str) -> str:
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    # FIX: Removed the extra spacer div to reduce the gap
+    # st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
@@ -336,7 +338,7 @@ def render_answer_bar(
     font="clamp(16px, 2.1vw, 20px)",
     weight=800,
     shape="circle",
-    top_margin_px=4,
+    top_margin_px=0, # FIX: Reduced top margin to bring buttons closer to graph
     bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
     show_letter=False
 ):
@@ -352,7 +354,7 @@ def render_answer_bar(
         align-items: center !important;
         column-gap: {gap}; row-gap: 0;
         padding: 0; margin: 0; overflow: visible;
-        width: 100%; /* FIX: Ensure it takes full width of the column */
+        width: 100%;
     }}
     #{uid} [role="radiogroup"] label {{
         place-self: center;
@@ -382,58 +384,46 @@ def render_answer_bar(
         key=key,
         index=None,
         label_visibility="collapsed",
-        horizontal=True,  # FIX: Set to True for better base layout
+        horizontal=True,
         on_change=on_change
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- REVISED, STABLE TIMER AND BUTTON HANDLER ---
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
         return
 
     timeout_ms = timeout_sec * 1000
-    # Create a key that is unique to the current trial/practice item
     unique_key_suffix = f"{st.session_state.page}_{st.session_state.get('practice_idx', st.session_state.i)}"
     timer_initiated_key = f"timer_initiated_{unique_key_suffix}"
 
     js_code = f"""
         <script>
-            // Use a global object to hold timer info to prevent duplicates
             if (!window.trialTimer) {{ window.trialTimer = {{ intervalId: null, startTime: null }}; }}
-
-            // Clear any previous timer before starting a new one
             if (window.trialTimer.intervalId) {{ clearInterval(window.trialTimer.intervalId); }}
-
             window.trialTimer.startTime = new Date().getTime();
-
             function checkTimeout() {{
                 const elapsedTime = new Date().getTime() - window.trialTimer.startTime;
                 const remainingSeconds = Math.max(0, Math.ceil(({timeout_ms} - elapsedTime) / 1000));
-                
                 const timerElement = window.parent.document.getElementById('timer-display');
                 if (timerElement) {{ timerElement.innerText = remainingSeconds; }}
-
                 if (elapsedTime > {timeout_ms}) {{
-                    // Find the hidden button by its specific key and click it
                     const timeoutButton = window.parent.document.querySelector('button[data-testid="stButton"][key="timeout_callback_{unique_key_suffix}"]');
                     if (timeoutButton) {{ timeoutButton.click(); }}
-                    clearInterval(window.trialTimer.intervalId); // Stop this timer
+                    clearInterval(window.trialTimer.intervalId);
                 }}
             }}
-            window.trialTimer.intervalId = setInterval(checkTimeout, 500); // Check twice a second
+            window.trialTimer.intervalId = setInterval(checkTimeout, 500);
         </script>
     """
     
-    # Inject the timer script only ONCE per trial
     if not st.session_state.get(timer_initiated_key, False):
         st.session_state[timer_initiated_key] = True
         components.html(js_code, height=0)
 
-    # This is the hidden button that the JavaScript will "click"
     if st.button("Timeout", key=f"timeout_callback_{unique_key_suffix}"):
         on_timeout()
-        st.stop() # Stop execution after timeout to prevent errors
+        st.stop()
 
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
@@ -441,7 +431,6 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
         def _on_change():
             choice = st.session_state.get(radio_key)
-            # FIX: Let the on_press function handle the logic, don't change state here.
             if st.session_state.awaiting_response and choice:
                 on_press(str(choice))
 
@@ -557,7 +546,7 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        st.rerun() # FIX: Rerun to apply the state change and show the "Continue" button
+        st.rerun()
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
