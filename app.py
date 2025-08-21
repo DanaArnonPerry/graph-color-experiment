@@ -145,8 +145,9 @@ def _read_service_account_from_secrets() -> dict:
     try:
         sa = dict(st.secrets["service_account"])
         if sa:
-            # אם בעתיד תופיע בעיית מקשים עם \n, ניתן לשקול:
-            # if "private_key" in sa: sa["private_key"] = sa["private_key"].replace("\\n", "\n")
+            # normalize private_key (מונע שגיאות \n רווחות)
+            if "private_key" in sa and isinstance(sa["private_key"], str):
+                sa["private_key"] = sa["private_key"].replace("\\n", "\n")
             return sa
     except Exception:
         pass
@@ -157,7 +158,10 @@ def _read_service_account_from_secrets() -> dict:
     sa = {}
     for k in keys:
         try:
-            sa[k] = st.secrets[k]
+            val = st.secrets[k]
+            if k == "private_key" and isinstance(val, str):
+                val = val.replace("\\n", "\n")
+            sa[k] = val
         except Exception:
             pass
     if not sa:
@@ -330,9 +334,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         textposition="outside", texttemplate="<b>%{text}</b>",
         cliponaxis=False
     ))
-    fig.update_traces(
-        textfont=dict(size=20, color="#111111"),
-    )
+    fig.update_traces(textfont=dict(size=20, color="#111111"))
     fig.update_layout(
         margin=dict(l=20, r=20, t=50, b=0),
         showlegend=False, bargap=0.35,
@@ -393,14 +395,25 @@ def render_answer_bar(
 
 
 def _safe_rerun():
-    """Rerun that works across Streamlit versions."""
     try:
         st.rerun()
     except Exception:
         try:
-            st.experimental_rerun()  # fallback for older versions
+            st.experimental_rerun()
         except Exception:
             pass
+
+
+def _inject_clear_frontend_timers():
+    """מנקה טיימרים מהצד-לקוח, כדי שלא יישארו תלויים כשעוברים מסך."""
+    components.html("""
+    <script>
+    (function(w){
+      if (w.__trialTick) { clearInterval(w.__trialTick); w.__trialTick = null; }
+      if (w.__trialHard) { clearTimeout(w.__trialHard); w.__trialHard = null; }
+    })(window.parent || window);
+    </script>
+    """, height=0)
 
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
@@ -410,15 +423,14 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
+    # אם נגמר הזמן – נסגור את הטריאל ונרנדר מחדש
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
         _safe_rerun()
         return
 
-    if st.session_state.page == "practice":
-        current_index = st.session_state.practice_idx
-    else:
-        current_index = st.session_state.i
+    # מפתח ייחודי לשאלה הנוכחית
+    current_index = st.session_state.practice_idx if st.session_state.page == "practice" else st.session_state.i
     unique_key_suffix = f"{st.session_state.page}_{current_index}"
 
     outer_cols = st.columns([1, 6, 1])
@@ -429,18 +441,50 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
             choice = st.session_state.get(radio_key)
             if st.session_state.awaiting_response and choice:
                 on_press(str(choice))
+                # אין צורך ב-rerun כאן — Streamlit מבצע rerun אוטומטית אחרי callback
 
         render_answer_bar(key=radio_key, on_change=_on_change, options=("A", "B", "C", "D", "E"))
 
+    # שורת הטיימר על המסך
     st.markdown(
         f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
 
-    # ריענון עדין מהשרת (ללא JS) כדי לעדכן את התצוגה פעם בשנייה
-    if st.session_state.page in ("practice", "trial") and st.session_state.get("awaiting_response", False):
-        time.sleep(1)
-        _safe_rerun()
+    # טיימר יחיד בצד לקוח: מעדכן ספרה כל שניה, ומרענן כשמגיע ל-0
+    components.html(f"""
+    <script>
+    (function(w){{
+      var root = w.parent || w;
+      // ניקוי טיימרים קודמים
+      if (root.__trialTick) {{ clearInterval(root.__trialTick); root.__trialTick = null; }}
+      if (root.__trialHard) {{ clearTimeout(root.__trialHard); root.__trialHard = null; }}
+
+      var remain = {remain};
+      function update(){{
+        var el = root.document.getElementById('timer-display');
+        if (el) el.textContent = remain;
+      }}
+      update();
+
+      root.__trialTick = setInterval(function(){{
+        remain -= 1;
+        if (remain <= 0) {{
+          clearInterval(root.__trialTick); root.__trialTick = null;
+          root.location.reload();
+        }} else {{
+          update();
+        }}
+      }}, 1000);
+
+      // חגורת בטיחות — רענון מעט אחרי הזמן (מגן על sleep/תזמונים)
+      root.__trialHard = setTimeout(function(){{
+        if (root.__trialTick) {{ clearInterval(root.__trialTick); root.__trialTick = null; }}
+        root.location.reload();
+      }}, ({remain} * 1000) + 300);
+    }})(window);
+    </script>
+    """, height=0)
 
 
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
@@ -454,6 +498,15 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
                 f"</a>")
     except Exception:
         return ""
+
+
+def _link_button(label: str, url: str, primary: bool = False):
+    """Fallback ל-link_button בגרסאות ישנות."""
+    try:
+        st.link_button(label, url, type=("primary" if primary else "secondary"))
+    except Exception:
+        st.markdown(f"[{label}]({url})")
+
 
 # ========= Screens =========
 def screen_welcome():
@@ -562,6 +615,7 @@ def screen_practice():
 def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
+    _inject_clear_frontend_timers()
     st.markdown(
         "<div style='text-align:center; font-size:28px; font-weight:800; margin:32px 0;'>התרגיל הסתיים</div>",
         unsafe_allow_html=True
@@ -613,7 +667,7 @@ def screen_trial():
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
-        _safe_rerun()
+        _safe_rerun()  # כאן צריך rerun (לא callback)
 
     def on_press(key):
         rt = time.time() - (st.session_state.t_start or time.time())
@@ -621,7 +675,7 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        _safe_rerun()
+        # אין צורך ב-rerun כאן — ה-callback גורם לרינדור מחדש
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
@@ -629,6 +683,7 @@ def screen_trial():
 def screen_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
+    _inject_clear_frontend_timers()
 
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
@@ -663,9 +718,9 @@ def screen_end():
         if html:
             st.markdown(f"<div style='text-align:center; margin-top:10px;'>{html}</div>", unsafe_allow_html=True)
         else:
-            st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+            _link_button("לאתר שלי", WEBSITE_URL, primary=True)
     elif WEBSITE_URL:
-        st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+        _link_button("לאתר שלי", WEBSITE_URL, primary=True)
     if admin and not df.empty:
         st.download_button(
             "הורדת תוצאות (CSV)",
@@ -673,7 +728,7 @@ def screen_end():
             file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
             mime="text/csv",
         )
-        st.link_button("פתח/י את Google Sheet", f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit", type="primary")
+        _link_button("פתח/י את Google Sheet", f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit", primary=True)
 
 # ========= Router =========
 page = st.session_state.page
