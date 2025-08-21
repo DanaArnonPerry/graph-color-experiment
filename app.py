@@ -61,6 +61,7 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"]{ margin-bottom: 0 !important; }
 h3 { margin-bottom: 8px !important; }
 button[title="View fullscreen"]{ display:none !important; }
+button[data-testid="stButton"][key*="timeout_callback"] { display: none; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -75,7 +76,7 @@ def _admin_ui_enabled() -> bool:
 
 def init_state():
     ss = st.session_state
-    ss.setdefault("page", "welcome")     # welcome -> practice -> practice_end -> trial -> end
+    ss.setdefault("page", "welcome")
     ss.setdefault("df", None)
     ss.setdefault("practice_list", [])
     ss.setdefault("practice_idx", 0)
@@ -89,6 +90,7 @@ def init_state():
     ss.setdefault("is_admin", False)
     ss.setdefault("awaiting_response", False)
     ss.setdefault("last_feedback_html", "")
+    ss.setdefault("results_saved", False)
 init_state()
 
 # ========= Admin =========
@@ -121,7 +123,7 @@ def is_admin(show_ui: bool = False):
 # ========= Data =========
 @st.cache_data
 def load_data():
-    df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")  # handles BOM
+    df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
     df = df.dropna(how="all").fillna("")
     df = df.astype({c: str for c in df.columns})
     df.columns = df.columns.str.strip()
@@ -313,7 +315,6 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# === שורת כפתורים אופקית: פונקציה גמישה לעיצוב ===
 def render_answer_bar(
     key: str,
     options=("A","B","C","D","E"),
@@ -323,7 +324,7 @@ def render_answer_bar(
     font="clamp(16px, 2.1vw, 20px)",
     weight=800,
     shape="circle",
-    top_margin_px=4,
+    top_margin_px=0,
     bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
     show_letter=False
 ):
@@ -353,54 +354,57 @@ def render_answer_bar(
     </style>
     """, unsafe_allow_html=True)
     st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
-    st.radio("", options, key=key, index=None, label_visibility="collapsed", horizontal=False, on_change=on_change)
+    st.radio("", options, key=key, index=None, label_visibility="collapsed", horizontal=True, on_change=on_change)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# === כפתורי פעולה + טיימר (הפונקציה שנקטעה – כאן מלאה) ===
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
         return
-
-    elapsed = time.time() - (st.session_state.t_start or time.time())
-    remain  = max(0, timeout_sec - int(elapsed))
-    if elapsed >= timeout_sec and st.session_state.awaiting_response:
-        st.session_state.awaiting_response = False
-        on_timeout(); st.stop()
-
-    outer = st.columns([1,6,1])
-    with outer[1]:
-        unique = f"radio_{st.session_state.page}_{st.session_state.i}"
-
+    timeout_ms = timeout_sec * 1000
+    if st.session_state.page == "practice":
+        current_index = st.session_state.practice_idx
+    else:
+        current_index = st.session_state.i
+    unique_key_suffix = f"{st.session_state.page}_{current_index}"
+    timer_initiated_key = f"timer_initiated_{unique_key_suffix}"
+    js_code = f"""
+        <script>
+            if (!window.trialTimer) {{ window.trialTimer = {{ intervalId: null, startTime: null }}; }}
+            if (window.trialTimer.intervalId) {{ clearInterval(window.trialTimer.intervalId); }}
+            window.trialTimer.startTime = new Date().getTime();
+            function checkTimeout() {{
+                const elapsedTime = new Date().getTime() - window.trialTimer.startTime;
+                const remainingSeconds = Math.max(0, Math.ceil(({timeout_ms} - elapsedTime) / 1000));
+                const timerElement = window.parent.document.getElementById('timer-display');
+                if (timerElement) {{ timerElement.innerText = remainingSeconds; }}
+                if (elapsedTime > {timeout_ms}) {{
+                    const timeoutButton = window.parent.document.querySelector('button[data-testid="stButton"][key="timeout_callback_{unique_key_suffix}"]');
+                    if (timeoutButton) {{ timeoutButton.click(); }}
+                    clearInterval(window.trialTimer.intervalId);
+                }}
+            }}
+            window.trialTimer.intervalId = setInterval(checkTimeout, 500);
+        </script>
+    """
+    if not st.session_state.get(timer_initiated_key, False):
+        st.session_state[timer_initiated_key] = True
+        components.html(js_code, height=0)
+    if st.button("Timeout", key=f"timeout_callback_{unique_key_suffix}"):
+        on_timeout()
+        st.stop()
+    outer_cols = st.columns([1,6,1])
+    with outer_cols[1]:
+        radio_key = f"radio_{unique_key_suffix}"
         def _on_change():
-            choice = st.session_state.get(unique)
+            choice = st.session_state.get(radio_key)
             if st.session_state.awaiting_response and choice:
-                st.session_state.awaiting_response = False
                 on_press(str(choice))
-
-        render_answer_bar(
-            key=unique,
-            options=("A","B","C","D","E"),
-            on_change=_on_change,
-            size="clamp(36px, 5.5vw, 56px)",
-            gap="clamp(10px, 1.8vw, 24px)",
-            font="clamp(16px, 2.1vw, 20px)",
-            weight=800,
-            shape="circle",
-            top_margin_px=4,
-            show_letter=False
-        )
-
+        render_answer_bar(key=radio_key, on_change=_on_change, options=("A","B","C","D","E"))
     st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
+        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{timeout_sec}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    if remain > 0:
-        components.html(
-            f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
-            height=0,
-        )
 
-# ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
     try:
         ext = os.path.splitext(path)[1].lower()
@@ -418,44 +422,33 @@ def screen_welcome():
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
-**שלום וברוכ/ה הבא/ה לניסוי**  
+**שלום וברוכ/ה הבא/ה לניסוי**
 
 במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
-
 חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
-
-**איך עונים?**  
-לוחצים על האות המתאימה מתחת לגרף **A / B / C / D / E**.
-
+**איך עונים?** לוחצים על הכפתור עם האות המתאימה מתחת לגרף **A / B / C / D / E**.
 לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול** (לא נשמרות בתוצאות).
-
 כדי להתחיל – לחצו על **המשך לתרגול**.
 """
     )
-
     if not os.path.exists(DATA_PATH):
         st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
-
     try:
         df = load_data()
     except Exception as e:
         st.error(str(e)); st.stop()
-
     total_rows = len(df)
     if total_rows < 2:
         st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
     if total_rows < 2 + N_TRIALS:
         st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום 40. נריץ את הקיים.")
-
     if st.button("המשך לתרגול"):
         _ensure_participant_id()
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
-
         n_trials_final = min(N_TRIALS, max(0, total_rows - 2))
         practice_items = df.iloc[:2].to_dict(orient="records")
         pool_df = df.iloc[2: 2 + n_trials_final].copy()
         trials = build_alternating_trials(pool_df, n_trials_final)
-
         st.session_state.df = df
         st.session_state.practice_list = practice_items
         st.session_state.trials = trials
@@ -463,6 +456,7 @@ def screen_welcome():
         st.session_state.i = 0
         st.session_state.t_start = None
         st.session_state.results = []
+        st.session_state.results_saved = False
         st.session_state.page = "practice"
         st.rerun()
 
@@ -471,22 +465,19 @@ def _practice_one(idx: int):
         st.session_state.t_start = time.time()
         st.session_state.awaiting_response = True
         st.session_state.last_feedback_html = ""
-
     t = st.session_state.practice_list[idx]
     title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
-
     if st.session_state.last_feedback_html:
         st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
-
     def on_timeout():
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
-            st.session_state.practice_idx += 1; st.rerun()
+            st.session_state.practice_idx += 1
         else:
-            st.session_state.page = "practice_end"; st.rerun()
-
+            st.session_state.page = "practice_end"
+        st.rerun()
     def on_press(key):
         correct_letter = str(t["QCorrectAnswer"]).strip().upper()
         chosen = key.strip().upper()
@@ -501,7 +492,7 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-
+        st.rerun()
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
     else:
@@ -511,9 +502,10 @@ def _practice_one(idx: int):
                 st.session_state.t_start = None
                 st.session_state.last_feedback_html = ""
                 if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
-                    st.session_state.practice_idx += 1; st.rerun()
+                    st.session_state.practice_idx += 1
                 else:
-                    st.session_state.page = "practice_end"; st.rerun()
+                    st.session_state.page = "practice_end"
+                st.rerun()
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
@@ -540,12 +532,10 @@ def screen_trial():
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
         st.session_state.awaiting_response = True
-
     i = st.session_state.i
     t = st.session_state.trials[i]
     title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
-
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append(
             {
@@ -559,50 +549,43 @@ def screen_trial():
                 "RT_sec": round(rt_sec, 3),
             }
         )
-
-    def on_timeout():
-        finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
-        st.session_state.t_start = None
-        st.session_state.awaiting_response = False
-        if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1; st.rerun()
-        else:
-            st.session_state.page = "end"; st.rerun()
-
-    def on_press(key):
-        rt = time.time() - (st.session_state.t_start or time.time())
-        correct_letter = str(t["QCorrectAnswer"]).strip().upper()
-        chosen = key.strip().upper()
-        is_correct = (chosen == correct_letter)
-        finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.i + 1 < len(st.session_state.trials):
             st.session_state.i += 1
         else:
             st.session_state.page = "end"
-
+        st.rerun()
+    def on_timeout():
+        finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
+    def on_press(key):
+        rt = time.time() - (st.session_state.t_start or time.time())
+        correct_letter = str(t["QCorrectAnswer"]).strip().upper()
+        chosen = key.strip().upper()
+        is_correct = (chosen == correct_letter)
+        finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_end():
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
-
     df = pd.DataFrame(st.session_state.results)
     admin = is_admin()
 
     if df.empty:
         st.info("לא נאספו תוצאות.")
-    else:
+    elif not st.session_state.get("results_saved", False):
         try:
             append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+            st.session_state.results_saved = True
             st.success("התשובות נשלחו בהצלחה ✅")
         except Exception as e:
             if admin:
                 st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
             else:
                 st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
+    else:
+        st.success("התשובות נשלחו בהצלחה ✅")
 
     st.markdown(
         f"""
@@ -612,7 +595,6 @@ def screen_end():
         """,
         unsafe_allow_html=True,
     )
-
     if LOGO_PATH and WEBSITE_URL:
         html = _file_to_base64_html_img_link(LOGO_PATH, WEBSITE_URL, width_px=140)
         if html:
@@ -621,7 +603,6 @@ def screen_end():
             st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
     elif WEBSITE_URL:
         st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
-
     if admin and not df.empty:
         st.download_button(
             "הורדת תוצאות (CSV)",
