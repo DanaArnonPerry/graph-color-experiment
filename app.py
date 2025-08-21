@@ -330,7 +330,7 @@ def _render_graph_block(title_html, question_text, row_dict):
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
 # ---------- NEW: שורת כפתורים ממורכזת A–E ----------
-def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
+def render_choice_buttons(key_prefix: str, on_press, letters=("E","D","C","B","A")):
     st.markdown("""
     <style>
     .choice-wrap { display:flex; justify-content:center; gap: clamp(10px,1.6vw,22px); margin-top: 2px; }
