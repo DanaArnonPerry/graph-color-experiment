@@ -25,7 +25,7 @@ from google.oauth2 import service_account
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-DATA_PATH = "data/colors_in_charts.csv"
+DATA_PATH = "colors_in_charts.csv" # Adjusted path to be local
 
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
 GSHEET_WORKSHEET_NAME = "Results"
@@ -64,6 +64,11 @@ div[data-testid="stPlotlyChart"]{ margin-bottom: 6px !important; }
 
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"]{ display:none !important; }
+
+/* Hiding the timeout button */
+button[kind="secondary"] {
+    display: none;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -78,7 +83,7 @@ def _admin_ui_enabled() -> bool:
 
 def init_state():
     ss = st.session_state
-    ss.setdefault("page", "welcome")     # welcome -> practice -> practice_end -> trial -> end
+    ss.setdefault("page", "welcome")      # welcome -> practice -> practice_end -> trial -> end
     ss.setdefault("df", None)
     ss.setdefault("practice_list", [])
     ss.setdefault("practice_idx", 0)
@@ -251,7 +256,6 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
             return pool_df.sample(frac=1, random_state=None).to_dict(orient="records")
         return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
 
-# === עזר: חילוץ A..E ===
 def _extract_option_values_and_colors(row: dict):
     letters = ["A","B","C","D","E"]
     vals = {}
@@ -280,7 +284,6 @@ def _correct_phrase(question_text: str) -> str:
     if ("גבוה" in q) or ("highest" in q.lower()): return "עם הערך הגבוה ביותר"
     return "התשובה הנכונה"
 
-# === גרף Plotly (סטטי) ===
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
@@ -306,7 +309,6 @@ def _render_graph_block(title_html, question_text, row_dict):
         textposition="outside", texttemplate="<b>%{text}</b>",
         cliponaxis=False
     ))
-    # מספרים שחורים מעל העמודות
     fig.update_traces(
         textfont=dict(size=20, color="#111111"),
         outsidetextfont=dict(size=20, color="#111")
@@ -325,119 +327,111 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# === שורת כפתורים אופקית: פונקציה גמישה לעיצוב ===
+# --- NEW: Function to render the centered answer buttons ---
 def render_answer_bar(
-    key: str,
-    options=("A","B","C","D","E"),
-    on_change=None,
-    # עיצוב/גודל – ניתן לשנות כרצונך (רספונסיבי):
-    size="clamp(36px, 5.5vw, 56px)",   # קוטר/גובה הכפתור
-    gap="clamp(10px, 1.8vw, 24px)",    # רווח אופקי בין הכפתורים
-    font="clamp(16px, 2.1vw, 20px)",   # גודל אות אם מציגים אות
-    weight=800,                        # משקל גופן
-    shape="circle",                    # "circle" / "pill" / "square"
-    top_margin_px=4,                   # מרחק מהגרף
-    bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
-    show_letter=False                  # True כדי להציג את האות בתוך הכפתור
+    on_press,
+    key_suffix,
+    disabled=False,
+    options=["A", "B", "C", "D", "E"],
+    label="בחר/י תשובה",
 ):
-    radius = {"pill":"10px", "square":"6px", "circle":"9999px"}.get(str(shape).lower(), "10px")
-    uid = f"ab_{key}"
+    """Renders the answer radio buttons in a centered horizontal layout."""
+    key = f"radio_{key_suffix}"
 
-    # CSS ייחודי לשורה הזו (ע"י id)
-    st.markdown(f"""
-    <style>
-    /* 5/len(options) תאים שווים -> יישור מתחת ל-A..E */
-    #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
-        display: grid !important;
-        grid-template-columns: repeat({len(options)}, 1fr) !important;
-        justify-items: center !important;
-        align-items: center !important;
-        column-gap: {gap}; row-gap: 0;
-        padding: 0; margin: 0; overflow: visible;
-    }}
-    /* הכפתור עצמו */
-    #{uid} [role="radiogroup"] label {{
-        place-self: center;
-        width: {size}; height: {size};
-        border-radius: {radius};
-        background: {bg}; border: 1.5px solid {border};
-        box-shadow: 0 1px 0 rgba(0,0,0,.08);
-        display: flex; align-items: center; justify-content: center;
-        font-weight: {weight}; font-size: {font}; color: #111;
-        cursor: pointer; user-select: none;
-        {"font-size:0; line-height:0;" if not show_letter else ""}
-    }}
-    /* מסתירים את רדיו המקורי */
-    #{uid} [role="radiogroup"] input[type="radio"] {{
-        position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;
-    }}
-    #{uid} [role="radiogroup"] label:hover {{ filter: brightness(1.03); }}
-    #{uid} [role="radiogroup"] label:has(input[type="radio"]:checked) {{
-        background: {active_bg}; border-color: {active_border};
-        box-shadow: inset 0 0 0 2px #9ca3af33;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-    # עוטפים פעם אחת עם id + מרווח מהגרף
-    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
-    st.radio(
-        "", options,
-        key=key,
-        index=None,
-        label_visibility="collapsed",
-        horizontal=False,   # הפריסה נכפת ע"י ה-Grid
-        on_change=on_change
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# === כפתורי פעולה + טיימר ללא rerun בתוך callback ===
-def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    if not st.session_state.get("awaiting_response", False):
-        return
-
-    elapsed = time.time() - (st.session_state.t_start or time.time())
-    remain  = max(0, timeout_sec - int(elapsed))
-    if elapsed >= timeout_sec and st.session_state.awaiting_response:
-        st.session_state.awaiting_response = False
-        on_timeout(); st.stop()
-
-    outer = st.columns([1,6,1])
-    with outer[1]:
-        # key יציב – מונע יצירה מחדש בכל ריצה ולכן לא "נופל" לאנכי
-        unique = f"radio_{st.session_state.page}_{st.session_state.i}"
-
-        def _on_change():
-            choice = st.session_state.get(unique)
-            if st.session_state.awaiting_response and choice:
-                st.session_state.awaiting_response = False
-                on_press(str(choice))
-
-        # שורת תשובות אופקית, גמישה לעיצוב:
-        render_answer_bar(
-            key=unique,
-            options=("A","B","C","D","E"),
-            on_change=_on_change,
-            # אפשר לכוון גודל/מרווח/צורה כאן:
-            size="clamp(36px, 5.5vw, 56px)",
-            gap="clamp(10px, 1.8vw, 24px)",
-            font="clamp(16px, 2.1vw, 20px)",
-            weight=800,
-            shape="circle",          # "pill" לקבל מלבניים מעוגלים
-            top_margin_px=4,
-            show_letter=False
+    # Use columns to center the radio buttons horizontally
+    _left_co, mid_co, _right_co = st.columns([1, 2, 1])
+    with mid_co:
+        st.radio(
+            label,
+            options,
+            key=key,
+            index=None,
+            horizontal=True,
+            on_change=on_press,
+            kwargs={"key": key},
+            disabled=disabled,
+            label_visibility="collapsed",
         )
 
+# --- NEW: Robust timer and answer handler ---
+def _radio_answer_and_timer(timeout, on_timeout, on_press):
+    """Renders answer radio buttons and a robust, single-instance countdown timer."""
+    timeout_ms = timeout * 1000
+    # A key that is unique for each trial run
+    key_suffix = f"{st.session_state.run_start_iso}_{st.session_state.i}"
+    # A key to ensure the timer script is injected only once per trial
+    timer_initiated_key = f"timer_initiated_{st.session_state.i}"
+
+    # JavaScript to handle the countdown
+    js_code = f"""
+        <script>
+            // Ensure a global timer object exists
+            if (!window.trialTimer) {{
+                window.trialTimer = {{ intervalId: null, startTime: null }};
+            }}
+
+            // Clear any previous timer to prevent multiple timers running
+            if (window.trialTimer.intervalId) {{
+                clearInterval(window.trialTimer.intervalId);
+            }}
+
+            window.trialTimer.startTime = new Date().getTime();
+
+            function checkTimeout() {{
+                const currentTime = new Date().getTime();
+                const elapsedTime = currentTime - window.trialTimer.startTime;
+
+                // Update remaining time display (optional, but good for UX)
+                const remainingSeconds = Math.max(0, Math.ceil(({timeout_ms} - elapsedTime) / 1000));
+                const timerElement = window.parent.document.getElementById('timer-display');
+                if (timerElement) {{
+                    timerElement.innerText = remainingSeconds;
+                }}
+
+                if (elapsedTime > {timeout_ms}) {{
+                    // Find and click the hidden timeout button
+                    const buttons = window.parent.document.querySelectorAll('button');
+                    // Find the button with a specific key to make it unique
+                    const timeoutButton = Array.from(buttons).find(btn => btn.innerText && btn.innerText.includes('Timeout_Internal'));
+                    if (timeoutButton) {{
+                        timeoutButton.click();
+                    }}
+                    clearInterval(window.trialTimer.intervalId); // Stop this timer
+                }}
+            }}
+
+            // Start the new timer
+            window.trialTimer.intervalId = setInterval(checkTimeout, 250); // Check 4 times a second
+        </script>
+    """
+
+    # Inject the JavaScript only once per trial
+    if not st.session_state.get(timer_initiated_key, False):
+        st.session_state[timer_initiated_key] = True
+        components.html(js_code, height=0)
+
+    # Hidden button for the JavaScript to click on timeout
+    if st.button(f"Timeout_Internal_{key_suffix}", key=f"timeout_btn_{key_suffix}"):
+        on_timeout()
+
+    # Render the answer buttons
+    def _on_change(key):
+        choice = st.session_state.get(key)
+        if choice:
+            on_press(choice)
+
+    render_answer_bar(
+        on_press=_on_change,
+        key_suffix=key_suffix,
+        disabled=st.session_state.get("answer_submitted", False),
+    )
+    
+    # Display for the remaining time
     st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
+        "<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{timeout}</b> שניות</div>",
         unsafe_allow_html=True,
     )
-    # רענון יחיד בסיום הטיימר (ללא הבהובים)
-    if remain > 0:
-        components.html(
-            f"<script>setTimeout(()=>window.parent.location.reload(), {remain*1000});</script>",
-            height=0,
-        )
+
 
 # ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
@@ -457,14 +451,11 @@ def screen_welcome():
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
-**שלום וברוכ/ה הבא/ה לניסוי**  
-
-במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
+**שלום וברוכ/ה הבא/ה לניסוי** במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
 
 חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
 
-**איך עונים?**  
-לוחצים על האות המתאימה מתחת לגרף **A / B / C / D / E**.
+**איך עונים?** לוחצים על הכפתור עם האות המתאימה מתחת לגרף **A / B / C / D / E**.
 
 לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול** (לא נשמרות בתוצאות).
 
@@ -540,6 +531,7 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
+        st.rerun()
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
@@ -598,15 +590,16 @@ def screen_trial():
                 "RT_sec": round(rt_sec, 3),
             }
         )
-
-    def on_timeout():
-        finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1; st.rerun()
+            st.session_state.i += 1
         else:
-            st.session_state.page = "end"; st.rerun()
+            st.session_state.page = "end"
+        st.rerun()
+
+    def on_timeout():
+        finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
 
     def on_press(key):
         rt = time.time() - (st.session_state.t_start or time.time())
@@ -614,14 +607,6 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-
-        # אין משוב בניסוי
-        st.session_state.t_start = None
-        st.session_state.awaiting_response = False
-        if st.session_state.i + 1 < len(st.session_state.trials):
-            st.session_state.i += 1
-        else:
-            st.session_state.page = "end"
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
