@@ -25,7 +25,7 @@ from google.oauth2 import service_account
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-DATA_PATH = "colors_in_charts.csv" # Adjusted path to be local
+DATA_PATH = "colors_in_charts.csv"
 
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
 GSHEET_WORKSHEET_NAME = "Results"
@@ -65,8 +65,8 @@ div[data-testid="stPlotlyChart"]{ margin-bottom: 6px !important; }
 /* הסתרת fullscreen של Streamlit */
 button[title="View fullscreen"]{ display:none !important; }
 
-/* Hiding the timeout button */
-button[kind="secondary"] {
+/* CSS for hiding the internal timeout button */
+button[data-testid="stButton"][key*="timeout_callback"] {
     display: none;
 }
 </style>
@@ -83,7 +83,7 @@ def _admin_ui_enabled() -> bool:
 
 def init_state():
     ss = st.session_state
-    ss.setdefault("page", "welcome")      # welcome -> practice -> practice_end -> trial -> end
+    ss.setdefault("page", "welcome")
     ss.setdefault("df", None)
     ss.setdefault("practice_list", [])
     ss.setdefault("practice_idx", 0)
@@ -96,7 +96,7 @@ def init_state():
     ss.setdefault("run_start_iso", "")
     ss.setdefault("is_admin", False)
     ss.setdefault("awaiting_response", False)
-    ss.setdefault("last_feedback_html", "")  # משוב – לתרגול בלבד
+    ss.setdefault("last_feedback_html", "")
 init_state()
 
 # ========= Admin =========
@@ -327,113 +327,135 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# --- NEW: Function to render the centered answer buttons ---
 def render_answer_bar(
-    on_press,
-    key_suffix,
-    disabled=False,
-    options=["A", "B", "C", "D", "E"],
-    label="בחר/י תשובה",
+    key: str,
+    options=("A","B","C","D","E"),
+    on_change=None,
+    size="clamp(36px, 5.5vw, 56px)",
+    gap="clamp(10px, 1.8vw, 24px)",
+    font="clamp(16px, 2.1vw, 20px)",
+    weight=800,
+    shape="circle",
+    top_margin_px=4,
+    bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
+    show_letter=False
 ):
-    """Renders the answer radio buttons in a centered horizontal layout."""
-    key = f"radio_{key_suffix}"
+    radius = {"pill":"10px", "square":"6px", "circle":"9999px"}.get(str(shape).lower(), "10px")
+    uid = f"ab_{key}"
 
-    # Use columns to center the radio buttons horizontally
-    _left_co, mid_co, _right_co = st.columns([1, 2, 1])
-    with mid_co:
-        st.radio(
-            label,
-            options,
-            key=key,
-            index=None,
-            horizontal=True,
-            on_change=on_press,
-            kwargs={"key": key},
-            disabled=disabled,
-            label_visibility="collapsed",
-        )
+    st.markdown(f"""
+    <style>
+    #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
+        display: grid !important;
+        grid-template-columns: repeat({len(options)}, 1fr) !important;
+        justify-items: center !important;
+        align-items: center !important;
+        column-gap: {gap}; row-gap: 0;
+        padding: 0; margin: 0; overflow: visible;
+        width: 100%; /* FIX: Ensure it takes full width of the column */
+    }}
+    #{uid} [role="radiogroup"] label {{
+        place-self: center;
+        width: {size}; height: {size};
+        border-radius: {radius};
+        background: {bg}; border: 1.5px solid {border};
+        box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: {weight}; font-size: {font}; color: #111;
+        cursor: pointer; user-select: none;
+        {"font-size:0; line-height:0;" if not show_letter else ""}
+    }}
+    #{uid} [role="radiogroup"] input[type="radio"] {{
+        position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;
+    }}
+    #{uid} [role="radiogroup"] label:hover {{ filter: brightness(1.03); }}
+    #{uid} [role="radiogroup"] label:has(input[type="radio"]:checked) {{
+        background: {active_bg}; border-color: {active_border};
+        box-shadow: inset 0 0 0 2px #9ca3af33;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- NEW: Robust timer and answer handler ---
-def _radio_answer_and_timer(timeout, on_timeout, on_press):
-    """Renders answer radio buttons and a robust, single-instance countdown timer."""
-    timeout_ms = timeout * 1000
-    # A key that is unique for each trial run
-    key_suffix = f"{st.session_state.run_start_iso}_{st.session_state.i}"
-    # A key to ensure the timer script is injected only once per trial
-    timer_initiated_key = f"timer_initiated_{st.session_state.i}"
+    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
+    st.radio(
+        "", options,
+        key=key,
+        index=None,
+        label_visibility="collapsed",
+        horizontal=True,  # FIX: Set to True for better base layout
+        on_change=on_change
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # JavaScript to handle the countdown
+# --- REVISED, STABLE TIMER AND BUTTON HANDLER ---
+def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
+    if not st.session_state.get("awaiting_response", False):
+        return
+
+    timeout_ms = timeout_sec * 1000
+    # Create a key that is unique to the current trial/practice item
+    unique_key_suffix = f"{st.session_state.page}_{st.session_state.get('practice_idx', st.session_state.i)}"
+    timer_initiated_key = f"timer_initiated_{unique_key_suffix}"
+
     js_code = f"""
         <script>
-            // Ensure a global timer object exists
-            if (!window.trialTimer) {{
-                window.trialTimer = {{ intervalId: null, startTime: null }};
-            }}
+            // Use a global object to hold timer info to prevent duplicates
+            if (!window.trialTimer) {{ window.trialTimer = {{ intervalId: null, startTime: null }}; }}
 
-            // Clear any previous timer to prevent multiple timers running
-            if (window.trialTimer.intervalId) {{
-                clearInterval(window.trialTimer.intervalId);
-            }}
+            // Clear any previous timer before starting a new one
+            if (window.trialTimer.intervalId) {{ clearInterval(window.trialTimer.intervalId); }}
 
             window.trialTimer.startTime = new Date().getTime();
 
             function checkTimeout() {{
-                const currentTime = new Date().getTime();
-                const elapsedTime = currentTime - window.trialTimer.startTime;
-
-                // Update remaining time display (optional, but good for UX)
+                const elapsedTime = new Date().getTime() - window.trialTimer.startTime;
                 const remainingSeconds = Math.max(0, Math.ceil(({timeout_ms} - elapsedTime) / 1000));
+                
                 const timerElement = window.parent.document.getElementById('timer-display');
-                if (timerElement) {{
-                    timerElement.innerText = remainingSeconds;
-                }}
+                if (timerElement) {{ timerElement.innerText = remainingSeconds; }}
 
                 if (elapsedTime > {timeout_ms}) {{
-                    // Find and click the hidden timeout button
-                    const buttons = window.parent.document.querySelectorAll('button');
-                    // Find the button with a specific key to make it unique
-                    const timeoutButton = Array.from(buttons).find(btn => btn.innerText && btn.innerText.includes('Timeout_Internal'));
-                    if (timeoutButton) {{
-                        timeoutButton.click();
-                    }}
+                    // Find the hidden button by its specific key and click it
+                    const timeoutButton = window.parent.document.querySelector('button[data-testid="stButton"][key="timeout_callback_{unique_key_suffix}"]');
+                    if (timeoutButton) {{ timeoutButton.click(); }}
                     clearInterval(window.trialTimer.intervalId); // Stop this timer
                 }}
             }}
-
-            // Start the new timer
-            window.trialTimer.intervalId = setInterval(checkTimeout, 250); // Check 4 times a second
+            window.trialTimer.intervalId = setInterval(checkTimeout, 500); // Check twice a second
         </script>
     """
-
-    # Inject the JavaScript only once per trial
+    
+    # Inject the timer script only ONCE per trial
     if not st.session_state.get(timer_initiated_key, False):
         st.session_state[timer_initiated_key] = True
         components.html(js_code, height=0)
 
-    # Hidden button for the JavaScript to click on timeout
-    if st.button(f"Timeout_Internal_{key_suffix}", key=f"timeout_btn_{key_suffix}"):
+    # This is the hidden button that the JavaScript will "click"
+    if st.button("Timeout", key=f"timeout_callback_{unique_key_suffix}"):
         on_timeout()
+        st.stop() # Stop execution after timeout to prevent errors
 
-    # Render the answer buttons
-    def _on_change(key):
-        choice = st.session_state.get(key)
-        if choice:
-            on_press(choice)
+    outer_cols = st.columns([1,6,1])
+    with outer_cols[1]:
+        radio_key = f"radio_{unique_key_suffix}"
 
-    render_answer_bar(
-        on_press=_on_change,
-        key_suffix=key_suffix,
-        disabled=st.session_state.get("answer_submitted", False),
-    )
-    
-    # Display for the remaining time
+        def _on_change():
+            choice = st.session_state.get(radio_key)
+            # FIX: Let the on_press function handle the logic, don't change state here.
+            if st.session_state.awaiting_response and choice:
+                on_press(str(choice))
+
+        render_answer_bar(
+            key=radio_key,
+            on_change=_on_change,
+            options=("A","B","C","D","E")
+        )
+
     st.markdown(
-        "<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{timeout}</b> שניות</div>",
+        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{timeout_sec}</b> שניות</div>",
         unsafe_allow_html=True,
     )
 
-
-# ===== Helper: clickable logo via base64 =====
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
     try:
         ext = os.path.splitext(path)[1].lower()
@@ -451,11 +473,14 @@ def screen_welcome():
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
-**שלום וברוכ/ה הבא/ה לניסוי** במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
+**שלום וברוכ/ה הבא/ה לניסוי**
+
+במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
 
 חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
 
-**איך עונים?** לוחצים על הכפתור עם האות המתאימה מתחת לגרף **A / B / C / D / E**.
+**איך עונים?**
+לוחצים על הכפתור עם האות המתאימה מתחת לגרף **A / B / C / D / E**.
 
 לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול** (לא נשמרות בתוצאות).
 
@@ -513,9 +538,10 @@ def _practice_one(idx: int):
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
         if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
-            st.session_state.practice_idx += 1; st.rerun()
+            st.session_state.practice_idx += 1
         else:
-            st.session_state.page = "practice_end"; st.rerun()
+            st.session_state.page = "practice_end"
+        st.rerun()
 
     def on_press(key):
         correct_letter = str(t["QCorrectAnswer"]).strip().upper()
@@ -531,7 +557,7 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        st.rerun()
+        st.rerun() # FIX: Rerun to apply the state change and show the "Continue" button
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
@@ -542,9 +568,10 @@ def _practice_one(idx: int):
                 st.session_state.t_start = None
                 st.session_state.last_feedback_html = ""
                 if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
-                    st.session_state.practice_idx += 1; st.rerun()
+                    st.session_state.practice_idx += 1
                 else:
-                    st.session_state.page = "practice_end"; st.rerun()
+                    st.session_state.page = "practice_end"
+                st.rerun()
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
