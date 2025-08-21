@@ -370,7 +370,14 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
-        components.html("<script>window.parent.location.reload()</script>", height=0)
+        components.html("""
+        <script>
+        (function(w){
+          if (w.__st_reload_timer) { clearTimeout(w.__st_reload_timer); w.__st_reload_timer = null; }
+          w.location.reload();
+        })(window.parent);
+        </script>
+        """, height=0)
         return
 
     if st.session_state.page == "practice":
@@ -393,10 +400,15 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         unsafe_allow_html=True,
     )
     
-    if remain > 0:
-        # Schedule a reload for the exact moment the time is supposed to run out.
-        # This is a fallback in case the Python-based check is slow.
-        components.html(f"<script>setTimeout(() => window.parent.location.reload(), {remain * 1000})</script>", height=0)
+    if st.session_state.get("awaiting_response", False) and remain > 0:
+        components.html(f"""
+        <script>
+        (function(w){{
+          if (w.__st_reload_timer) clearTimeout(w.__st_reload_timer);
+          w.__st_reload_timer = setTimeout(function(){{ w.location.reload(); }}, {remain * 1000});
+        }})(window.parent);
+        </script>
+        """, height=0)
 
 
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
@@ -502,6 +514,13 @@ def screen_practice():
     _practice_one(st.session_state.practice_idx)
 
 def screen_practice_end():
+    components.html("""
+    <script>
+    (function(w){
+      if (w.__st_reload_timer) { clearTimeout(w.__st_reload_timer); w.__st_reload_timer = null; }
+    })(window.parent);
+    </script>
+    """, height=0)
     st.markdown(
         "<div style='text-align:center; font-size:28px; font-weight:800; margin:32px 0;'>התרגיל הסתיים</div>",
         unsafe_allow_html=True
@@ -556,6 +575,14 @@ def screen_trial():
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_end():
+    components.html("""
+    <script>
+    (function(w){
+      if (w.__st_reload_timer) { clearTimeout(w.__st_reload_timer); w.__st_reload_timer = null; }
+    })(window.parent);
+    </script>
+    """, height=0)
+    
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
     df = pd.DataFrame(st.session_state.results)
