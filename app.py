@@ -1,3 +1,14 @@
+זו אבחנה חדה כתער, ושיפור מצוין ללוגיקת הטיימר. כל הכבוד\!
+
+הניתוח שלך מדויק לחלוtiin. באמת נוצר מצב שבו הלוגיקה מתעדכנת (`on_timeout` נקראת), אבל הממשק נשאר "תקוע" עד לרענון הבא, מה שעלול ליצור חוויה לא חלקה.
+
+התיקון שהצעת – להוסיף רענון מיידי ברגע שהזמן אוזל – הוא בדיוק הפתרון הנכון. הוא מבטיח שהמעבר לשאלה הבאה יתרחש באופן מיידי וחלק, בדיוק כפי שהמשתמש מצפה.
+
+יישמתי את התיקון שהצעת. הנה הקוד המעודכן והסופי של הקובץ `app.py`, שכולל את השיפור הזה.
+
+-----
+
+```python
 # app.py
 import os
 import time
@@ -61,7 +72,6 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"]{ margin-bottom: 0 !important; }
 h3 { margin-bottom: 8px !important; }
 button[title="View fullscreen"]{ display:none !important; }
-button[data-testid="stButton"][key*="timeout_callback"] { display: none; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -161,7 +171,10 @@ def _gs_client():
     sa_info = _read_service_account_from_secrets()
     creds = service_account.Credentials.from_service_account_info(
         sa_info,
-        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"],
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
     )
     return gspread.authorize(creds)
 
@@ -334,8 +347,10 @@ def render_answer_bar(
     <style>
     #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
         display: grid !important;
-        grid-template-columns: repeat({len(options)}, 1fr) !important;
-        justify-items: center !important; align-items: center !important;
+        grid-auto-flow: column !important;
+        grid-template-columns: repeat({len(options)}, {size}) !important;
+        justify-content: center;
+        align-items: center !important;
         column-gap: {gap}; row-gap: 0; padding: 0; margin: 0; overflow: visible; width: 100%;
     }}
     #{uid} [role="radiogroup"] label {{
@@ -360,38 +375,21 @@ def render_answer_bar(
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     if not st.session_state.get("awaiting_response", False):
         return
-    timeout_ms = timeout_sec * 1000
+
+    elapsed = time.time() - (st.session_state.t_start or time.time())
+    remain = max(0, timeout_sec - int(elapsed))
+
+    if elapsed >= timeout_sec and st.session_state.awaiting_response:
+        on_timeout()
+        components.html("<script>window.parent.location.reload()</script>", height=0)
+        return
+
     if st.session_state.page == "practice":
         current_index = st.session_state.practice_idx
     else:
         current_index = st.session_state.i
     unique_key_suffix = f"{st.session_state.page}_{current_index}"
-    timer_initiated_key = f"timer_initiated_{unique_key_suffix}"
-    js_code = f"""
-        <script>
-            if (!window.trialTimer) {{ window.trialTimer = {{ intervalId: null, startTime: null }}; }}
-            if (window.trialTimer.intervalId) {{ clearInterval(window.trialTimer.intervalId); }}
-            window.trialTimer.startTime = new Date().getTime();
-            function checkTimeout() {{
-                const elapsedTime = new Date().getTime() - window.trialTimer.startTime;
-                const remainingSeconds = Math.max(0, Math.ceil(({timeout_ms} - elapsedTime) / 1000));
-                const timerElement = window.parent.document.getElementById('timer-display');
-                if (timerElement) {{ timerElement.innerText = remainingSeconds; }}
-                if (elapsedTime > {timeout_ms}) {{
-                    const timeoutButton = window.parent.document.querySelector('button[data-testid="stButton"][key="timeout_callback_{unique_key_suffix}"]');
-                    if (timeoutButton) {{ timeoutButton.click(); }}
-                    clearInterval(window.trialTimer.intervalId);
-                }}
-            }}
-            window.trialTimer.intervalId = setInterval(checkTimeout, 500);
-        </script>
-    """
-    if not st.session_state.get(timer_initiated_key, False):
-        st.session_state[timer_initiated_key] = True
-        components.html(js_code, height=0)
-    if st.button("Timeout", key=f"timeout_callback_{unique_key_suffix}"):
-        on_timeout()
-        st.stop()
+    
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
         radio_key = f"radio_{unique_key_suffix}"
@@ -400,10 +398,17 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
             if st.session_state.awaiting_response and choice:
                 on_press(str(choice))
         render_answer_bar(key=radio_key, on_change=_on_change, options=("A","B","C","D","E"))
+
     st.markdown(
-        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{timeout_sec}</b> שניות</div>",
+        f"<div style='text-align:center; margin-top:12px;'>⏳ זמן שנותר: <b id='timer-display'>{remain}</b> שניות</div>",
         unsafe_allow_html=True,
     )
+    
+    if remain > 0:
+        # Schedule a reload for the exact moment the time is supposed to run out.
+        # This is a fallback in case the Python-based check is slow.
+        components.html(f"<script>setTimeout(() => window.parent.location.reload(), {remain * 1000})</script>", height=0)
+
 
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
     try:
@@ -442,7 +447,7 @@ def screen_welcome():
         st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
     if total_rows < 2 + N_TRIALS:
         st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום 40. נריץ את הקיים.")
-    if st.button("המשך לתרגול"):
+    def on_start():
         _ensure_participant_id()
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
         n_trials_final = min(N_TRIALS, max(0, total_rows - 2))
@@ -458,7 +463,7 @@ def screen_welcome():
         st.session_state.results = []
         st.session_state.results_saved = False
         st.session_state.page = "practice"
-        st.rerun()
+    st.button("המשך לתרגול", on_click=on_start)
 
 def _practice_one(idx: int):
     if st.session_state.t_start is None:
@@ -477,7 +482,6 @@ def _practice_one(idx: int):
             st.session_state.practice_idx += 1
         else:
             st.session_state.page = "practice_end"
-        st.rerun()
     def on_press(key):
         correct_letter = str(t["QCorrectAnswer"]).strip().upper()
         chosen = key.strip().upper()
@@ -492,20 +496,18 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        st.rerun()
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
     else:
         center = st.columns([1,6,1])[1]
-        with center:
-            if st.button("המשך", key=f"practice_next_{idx}"):
-                st.session_state.t_start = None
-                st.session_state.last_feedback_html = ""
-                if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
-                    st.session_state.practice_idx += 1
-                else:
-                    st.session_state.page = "practice_end"
-                st.rerun()
+        def on_next():
+            st.session_state.t_start = None
+            st.session_state.last_feedback_html = ""
+            if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
+                st.session_state.practice_idx += 1
+            else:
+                st.session_state.page = "practice_end"
+        st.button("המשך", key=f"practice_next_{idx}", on_click=on_next)
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
@@ -520,13 +522,12 @@ def screen_practice_end():
         unsafe_allow_html=True
     )
     mid = st.columns([1,6,1])[1]
-    with mid:
-        if st.button("התחל", type="primary"):
-            st.session_state.page = "trial"
-            st.session_state.t_start = None
-            st.session_state.awaiting_response = False
-            st.session_state.last_feedback_html = ""
-            st.rerun()
+    def on_start():
+        st.session_state.page = "trial"
+        st.session_state.t_start = None
+        st.session_state.awaiting_response = False
+        st.session_state.last_feedback_html = ""
+    mid.button("התחל", type="primary", on_click=on_start)
 
 def screen_trial():
     if st.session_state.t_start is None:
@@ -555,7 +556,6 @@ def screen_trial():
             st.session_state.i += 1
         else:
             st.session_state.page = "end"
-        st.rerun()
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
     def on_press(key):
@@ -624,3 +624,4 @@ elif page == "trial":
     screen_trial()
 else:
     screen_end()
+```
