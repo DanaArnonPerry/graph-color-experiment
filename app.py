@@ -358,7 +358,7 @@ def render_answer_bar(
     </style>
     """, unsafe_allow_html=True)
     st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
-    st.radio("", options, key=key, index=None, label_visibility="collapsed", horizontal=True, on_change=on_change)
+    st.radio("בחר/י תשובה", options, key=key, index=None, label_visibility="collapsed", horizontal=True, on_change=on_change)
     st.markdown('</div>', unsafe_allow_html=True)
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
@@ -370,14 +370,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
 
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
-        components.html("""
-        <script>
-        (function(w){
-          if (w.__st_reload_timer) { clearTimeout(w.__st_reload_timer); w.__st_reload_timer = null; }
-          w.location.reload();
-        })(window.parent);
-        </script>
-        """, height=0)
+        st.rerun()
         return
 
     if st.session_state.page == "practice":
@@ -400,15 +393,8 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         unsafe_allow_html=True,
     )
     
-    if st.session_state.get("awaiting_response", False) and remain > 0:
-        components.html(f"""
-        <script>
-        (function(w){{
-          if (w.__st_reload_timer) clearTimeout(w.__st_reload_timer);
-          w.__st_reload_timer = setTimeout(function(){{ w.location.reload(); }}, {remain * 1000});
-        }})(window.parent);
-        </script>
-        """, height=0)
+    if st.session_state.page in ("practice", "trial") and st.session_state.get("awaiting_response", False):
+        components.html("<script>setTimeout(() => window.parent.location.reload(), 1000)</script>", height=0)
 
 
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
@@ -514,13 +500,8 @@ def screen_practice():
     _practice_one(st.session_state.practice_idx)
 
 def screen_practice_end():
-    components.html("""
-    <script>
-    (function(w){
-      if (w.__st_reload_timer) { clearTimeout(w.__st_reload_timer); w.__st_reload_timer = null; }
-    })(window.parent);
-    </script>
-    """, height=0)
+    st.session_state.awaiting_response = False
+    st.session_state.t_start = None
     st.markdown(
         "<div style='text-align:center; font-size:28px; font-weight:800; margin:32px 0;'>התרגיל הסתיים</div>",
         unsafe_allow_html=True
@@ -566,22 +547,19 @@ def screen_trial():
             st.session_state.page = "end"
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
+        st.rerun()
     def on_press(key):
         rt = time.time() - (st.session_state.t_start or time.time())
         correct_letter = str(t["QCorrectAnswer"]).strip().upper()
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
+        st.rerun()
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
 def screen_end():
-    components.html("""
-    <script>
-    (function(w){
-      if (w.__st_reload_timer) { clearTimeout(w.__st_reload_timer); w.__st_reload_timer = null; }
-    })(window.parent);
-    </script>
-    """, height=0)
+    st.session_state.awaiting_response = False
+    st.session_state.t_start = None
     
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
