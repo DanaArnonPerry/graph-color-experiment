@@ -73,7 +73,7 @@ section.main > div.block-container { padding-top: 10px; padding-bottom: 16px; }
   font-weight: 800; letter-spacing: .5px;
 }
 
-/* פסי רווח תחתונים מיותרים */
+/* הסתרת footer שמוסיף רווח אנכי */
 footer {visibility: hidden;}
 </style>
 """,
@@ -346,15 +346,17 @@ def render_answer_bar(
     uid = f"ab_{key}"
     st.markdown(f"""
     <style>
+    /* רדיו ממורכז ובסדר A..E גם ב-RTL */
     #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
+        direction: ltr !important;
         display: grid !important;
         grid-auto-flow: column !important;
         grid-template-columns: repeat({len(options)}, {size}) !important;
-        justify-content: center; align-items: center !important;
-        column-gap: {gap}; padding: 0; margin: 0; overflow: visible; width: 100%;
+        justify-content: center !important; align-items: center !important; justify-items: center !important;
+        column-gap: {gap}; padding: 0; margin: 0 auto; overflow: visible; width: max-content;
     }}
     #{uid} [role="radiogroup"] label {{
-        place-self: center; width: {size}; height: {size}; border-radius: {radius};
+        width: {size}; height: {size}; border-radius: {radius};
         background: {bg}; border: 1.5px solid {border}; box-shadow: 0 1px 0 rgba(0,0,0,.08);
         display: flex; align-items: center; justify-content: center;
         font-weight: {weight}; font-size: {font}; color: #111;
@@ -368,8 +370,7 @@ def render_answer_bar(
     }}
     </style>
     """, unsafe_allow_html=True)
-    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
-    # חשוב: תווית לא ריקה כדי למנוע אזהרות
+    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px; direction:ltr;">', unsafe_allow_html=True)
     st.radio("בחר/י תשובה", options, key=key, index=None,
              label_visibility="collapsed", horizontal=True, on_change=on_change)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -392,8 +393,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     remain = max(0, timeout_sec - int(elapsed))
 
     # טיימר קבוע למעלה
-    st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
-                unsafe_allow_html=True)
+    st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
 
     # אם הזמן נגמר – סוגרים את ה-trial. (לא בתוך callback)
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
@@ -401,7 +401,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         _safe_rerun()
         return
 
-    # מפתח ייחודי לכפתורי הבחירה
+    # מפתח ייחודי לרדיו
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
     radio_key = f"radio_{st.session_state.page}_{current_index}"
@@ -409,7 +409,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     def _on_change():
         choice = st.session_state.get(radio_key)
         if st.session_state.awaiting_response and choice:
-            # חשוב: לא מבצעים כאן rerun. שינוי ה-state יגרום ל-rerun אוטומטי.
+            # אין כאן rerun – Streamlit reruns אוטומטית אחרי שינוי state
             on_press(str(choice))
 
     outer_cols = st.columns([1,6,1])
@@ -588,7 +588,7 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        # אין כאן rerun — ה־callback עצמו יגרום לרענון אוטומטי
+        # אין כאן rerun — ה-callback גורם לרענון אוטומטי
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
