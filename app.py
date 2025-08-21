@@ -58,12 +58,12 @@ st.markdown(
 <style>
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
-div[data-testid="stPlotlyChart"]{ margin-bottom: 0 !important; }
-h3 { margin-bottom: 8px !important; }
-button[title="View fullscreen"]{ display:none !important; }
+
+/* אפס מרווחים סביב גרף */
+div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { padding-top: 10px; padding-bottom: 16px; }
+section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -73,7 +73,7 @@ section.main > div.block-container { padding-top: 10px; padding-bottom: 16px; }
   font-weight: 800; letter-spacing: .5px;
 }
 
-/* הסתרת footer שמוסיף רווח אנכי */
+/* פסי רווח תחתונים מיותרים */
 footer {visibility: hidden;}
 </style>
 """,
@@ -316,8 +316,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=20, b=0),
-        height=420,  # גובה סביר, מפחית גלילה
+        margin=dict(l=20, r=20, t=18, b=6),   # קטן מאוד כדי להצמיד כפתורים
+        height=420,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -329,51 +329,37 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-def render_answer_bar(
-    key: str,
-    options=("A","B","C","D","E"),
-    on_change=None,
-    size="clamp(36px, 5.5vw, 56px)",
-    gap="clamp(10px, 1.8vw, 24px)",
-    font="clamp(16px, 2.1vw, 20px)",
-    weight=800,
-    shape="circle",
-    top_margin_px=6,
-    bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
-    show_letter=False
-):
-    radius = {"pill":"10px", "square":"6px", "circle":"9999px"}.get(str(shape).lower(), "10px")
-    uid = f"ab_{key}"
-    st.markdown(f"""
+# ---------- NEW: שורת כפתורים ממורכזת A–E ----------
+def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
+    st.markdown("""
     <style>
-    /* רדיו ממורכז ובסדר A..E גם ב-RTL */
-    #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
-        direction: ltr !important;
-        display: grid !important;
-        grid-auto-flow: column !important;
-        grid-template-columns: repeat({len(options)}, {size}) !important;
-        justify-content: center !important; align-items: center !important; justify-items: center !important;
-        column-gap: {gap}; padding: 0; margin: 0 auto; overflow: visible; width: max-content;
-    }}
-    #{uid} [role="radiogroup"] label {{
-        width: {size}; height: {size}; border-radius: {radius};
-        background: {bg}; border: 1.5px solid {border}; box-shadow: 0 1px 0 rgba(0,0,0,.08);
-        display: flex; align-items: center; justify-content: center;
-        font-weight: {weight}; font-size: {font}; color: #111;
-        cursor: pointer; user-select: none;
-        {"font-size:0; line-height:0;" if not show_letter else ""}
-    }}
-    #{uid} [role="radiogroup"] input[type="radio"]{{ position:absolute; opacity:0; pointer-events:none; width:0; height:0; }}
-    #{uid} [role="radiogroup"] label:hover {{ filter: brightness(1.03); }}
-    #{uid} [role="radiogroup"] label:has(input[type="radio"]:checked) {{
-        background:{active_bg}; border-color:{active_border}; box-shadow: inset 0 0 0 2px #9ca3af33;
-    }}
+    .choice-wrap { display:flex; justify-content:center; gap: clamp(10px,1.6vw,22px); margin-top: 2px; }
+    .choice-wrap .stButton>button {
+        width: clamp(44px, 6vw, 64px);
+        height: clamp(44px, 6vw, 64px);
+        border-radius: 9999px;
+        background: #e5e7eb;
+        border: 1.5px solid #9ca3af;
+        font-weight: 800;
+        font-size: clamp(16px, 2.2vw, 20px);
+        color: #111;
+        box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        padding: 0;
+    }
+    .choice-wrap .stButton>button:hover { filter: brightness(1.05); }
     </style>
     """, unsafe_allow_html=True)
-    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px; direction:ltr;">', unsafe_allow_html=True)
-    st.radio("בחר/י תשובה", options, key=key, index=None,
-             label_visibility="collapsed", horizontal=True, on_change=on_change)
-    st.markdown('</div>', unsafe_allow_html=True)
+
+    # עוטפים בעמודה האמצעית כדי ליישר למרכז הדף
+    outer_cols = st.columns([1,6,1])
+    with outer_cols[1]:
+        st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
+        cols = st.columns(len(letters), gap="small")
+        for L, c in zip(letters, cols):
+            with c:
+                if st.button(L, key=f"{key_prefix}_btn_{L}"):
+                    on_press(L)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def _safe_rerun():
     try:
@@ -385,7 +371,7 @@ def _safe_rerun():
             pass
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """מציג פס טיימר עליון + כפתורי A–E. דואג לרענון עדין פעם בשנייה."""
+    """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -395,26 +381,19 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     # טיימר קבוע למעלה
     st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
 
-    # אם הזמן נגמר – סוגרים את ה-trial. (לא בתוך callback)
+    # אם הזמן נגמר – סוגרים את ה-trial (לא מתוך callback של כפתור)
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
         _safe_rerun()
         return
 
-    # מפתח ייחודי לרדיו
+    # מפתח ייחודי לכפתורים
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
-    radio_key = f"radio_{st.session_state.page}_{current_index}"
+    key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
-    def _on_change():
-        choice = st.session_state.get(radio_key)
-        if st.session_state.awaiting_response and choice:
-            # אין כאן rerun – Streamlit reruns אוטומטית אחרי שינוי state
-            on_press(str(choice))
-
-    outer_cols = st.columns([1,6,1])
-    with outer_cols[1]:
-        render_answer_bar(key=radio_key, on_change=_on_change, options=("A","B","C","D","E"))
+    # שורת כפתורים ממורכזת
+    render_choice_buttons(key_prefix, on_press)
 
     # רענון עדין פעם בשנייה לעדכון הטיימר
     if st.session_state.get("awaiting_response", False):
@@ -580,7 +559,7 @@ def screen_trial():
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
-        _safe_rerun()  # לא בתוך callback
+        _safe_rerun()
 
     def on_press(key):
         rt = time.time() - (st.session_state.t_start or time.time())
@@ -588,7 +567,7 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        # אין כאן rerun — ה-callback גורם לרענון אוטומטי
+        # אין כאן rerun; שינוי ה-state יספיק
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
