@@ -121,21 +121,27 @@ def is_admin(show_ui: bool = False):
     return st.session_state.is_admin
 
 # ========= Data =========
+
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv(DATA_PATH, encoding="utf-8")
-    except Exception:
-        df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+    # FIX: Use 'utf-8-sig' directly to handle potential BOM characters from Excel
+    df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+    
     df = df.dropna(how="all").fillna("")
     df = df.astype({c: str for c in df.columns})
+    
+    # Strip any leading/trailing whitespace from column headers
+    df.columns = df.columns.str.strip()
+    
     aliases = {"QCorrectA": "QCorrectAnswer", "QuestionT": "QuestionText", "ImageFile": "ImageFileName"}
     for src, dst in aliases.items():
         if dst not in df.columns and src in df.columns:
             df.rename(columns={src: dst}, inplace=True)
+            
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
         raise ValueError(f"בעיית עמודות בקובץ הנתונים: חסרות {', '.join(missing)}")
+        
     return df
 
 # ========= Google Sheets =========
