@@ -288,8 +288,6 @@ def _correct_phrase(question_text: str) -> str:
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
-    # FIX: Removed the extra spacer div to reduce the gap
-    # st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
@@ -338,7 +336,7 @@ def render_answer_bar(
     font="clamp(16px, 2.1vw, 20px)",
     weight=800,
     shape="circle",
-    top_margin_px=0, # FIX: Reduced top margin to bring buttons closer to graph
+    top_margin_px=0,
     bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
     show_letter=False
 ):
@@ -394,7 +392,16 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         return
 
     timeout_ms = timeout_sec * 1000
-    unique_key_suffix = f"{st.session_state.page}_{st.session_state.get('practice_idx', st.session_state.i)}"
+
+    # --- FIX for DuplicateWidgetID ---
+    # Determine the correct index based on the current page to create a truly unique key
+    if st.session_state.page == "practice":
+        current_index = st.session_state.practice_idx
+    else:  # page == "trial"
+        current_index = st.session_state.i
+    unique_key_suffix = f"{st.session_state.page}_{current_index}"
+    # --- End of FIX ---
+
     timer_initiated_key = f"timer_initiated_{unique_key_suffix}"
 
     js_code = f"""
