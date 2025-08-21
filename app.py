@@ -25,7 +25,7 @@ from google.oauth2 import service_account
 # ========= Parameters =========
 N_TRIALS = 40
 TRIAL_TIMEOUT_SEC = 30
-DATA_PATH = "colors_in_charts.csv"
+DATA_PATH = "data/colors_in_charts.csv"
 
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
 GSHEET_WORKSHEET_NAME = "Results"
