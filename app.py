@@ -300,7 +300,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     except Exception as e:
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
-          left, mid, right = st.columns([2,8,2])  # בחלק של התמונה
+        left, mid, right = st.columns([2,8,2])  # בחלק של הגרף
             with mid:
                 st.image(img, width=min(1500, img.width))
             st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
