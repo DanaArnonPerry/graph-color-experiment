@@ -63,7 +63,14 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
+section.main > div.block-container { 
+  padding-top: 0.5rem; 
+  padding-bottom: 0.5rem; 
+  max-height: 100vh;
+  overflow: hidden;
+}
+.element-container { margin-bottom: 0.3rem !important; }
+h3 { font-size: 1.1rem !important; margin-bottom: 0.2rem !important; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
