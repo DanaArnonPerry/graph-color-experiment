@@ -485,12 +485,10 @@ def _practice_one(idx: int):
         st.session_state.t_start = time.time()
         st.session_state.awaiting_response = True
         st.session_state.last_feedback_html = ""
+    
     t = st.session_state.practice_list[idx]
     title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
-
-    if st.session_state.last_feedback_html:
-        st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
 
     def on_timeout():
         st.session_state.t_start = None
@@ -514,11 +512,18 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        _safe_rerun()  # לחיצה אחת מספיקה – רענון מיידי
+        _safe_rerun()
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
     else:
+        # מפתח ייחודי לכפתורים
+        current_index = st.session_state.practice_idx
+        key_prefix = f"choice_practice_{current_index}"
+        
+        # הצגת הלחצנים ללא טיימר
+        render_choice_buttons(key_prefix, on_press)
+        
         center = st.columns([1,6,1])[1]
         def on_next():
             st.session_state.t_start = None
@@ -529,6 +534,10 @@ def _practice_one(idx: int):
                 st.session_state.page = "practice_end"
         with center:
             st.button("המשך", key=f"practice_next_{idx}", on_click=on_next)
+
+    # הודעת המשוב תמיד בסוף - מתחת לכל שאר האלמנטים
+    if st.session_state.last_feedback_html:
+        st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
