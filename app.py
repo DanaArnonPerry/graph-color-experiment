@@ -60,7 +60,10 @@ html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Ru
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* אפס מרווחים סביב גרף */
-div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
+div[data-testid="stPlotlyChart"], .stPlotlyChart { 
+    margin-bottom: 0 !important; 
+    margin-top: 10px !important;
+}
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
 section.main > div.block-container { 
@@ -302,6 +305,10 @@ def _correct_phrase(question_text: str) -> str:
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
+    
+    # רווח קטן לפני הגרף כדי שלא ייחתך
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
@@ -323,8 +330,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=6, b=0),
-        height=280,
+        margin=dict(l=20, r=20, t=25, b=10),  # הוספת מרווח עליון לגרף
+        height=300,  # מעט יותר גובה
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -342,8 +349,8 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     .choice-wrap { 
         display: flex; 
         justify-content: space-evenly;
-        margin-top: -25px;
-        margin-bottom: 5px;
+        margin-top: -10px;  /* קרוב יותר לגרף */
+        margin-bottom: 10px;
         width: 100%;
     }
     .choice-wrap .stButton>button {
@@ -396,7 +403,7 @@ def _safe_rerun():
         except Exception:
             pass
 
-def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
+def _radio_answer_and_timer(timeout_sec, on_timeout, on_press, show_feedback=False):
     """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
     if not st.session_state.get("awaiting_response", False):
         return
@@ -415,7 +422,12 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
                      if st.session_state.page == "practice" else st.session_state.i)
     key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
+    # כפתורי הבחירה
     render_choice_buttons(key_prefix, on_press)
+    
+    # המשוב מופיע אחרי הכפתורים (רק בתרגול)
+    if show_feedback and st.session_state.last_feedback_html:
+        st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
 
     if st.session_state.get("awaiting_response", False):
         time.sleep(1)
@@ -487,9 +499,6 @@ def _practice_one(idx: int):
     title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
-    if st.session_state.last_feedback_html:
-        st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
-
     def on_timeout():
         st.session_state.t_start = None
         st.session_state.awaiting_response = False
@@ -505,18 +514,22 @@ def _practice_one(idx: int):
         if chosen == correct_letter:
             st.session_state.awaiting_response = False
             st.session_state.last_feedback_html = (
-                f"<div style='text-align:center; margin:10px 0; font-weight:700;'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
+                f"<div style='text-align:center; margin:15px 0 10px 0; font-weight:700; color: #22c55e;'>✅ צדקת! עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
             )
         else:
             st.session_state.awaiting_response = True
             st.session_state.last_feedback_html = (
-                "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
+                "<div style='text-align:center; margin:15px 0 10px 0; font-weight:700; color: #ef4444;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
         _safe_rerun()
 
     if st.session_state.awaiting_response:
-        _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+        _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press, show_feedback=False)_feedback=True)
     else:
+        # אם ענו נכון, מציגים את המשוב וכפתור המשך
+        if st.session_state.last_feedback_html:
+            st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
+        
         center = st.columns([1,6,1])[1]
         def on_next():
             st.session_state.t_start = None
@@ -559,7 +572,6 @@ def screen_trial():
     i = st.session_state.i
     t = st.session_state.trials[i]
     
-    # תיקון: הפרדת השורות והחלפת המילה "תרגול" ל"שאלה"
     title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>שאלה {i+1} / {len(st.session_state.trials)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
@@ -593,66 +605,4 @@ def screen_trial():
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
         _safe_rerun()
 
-    _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
-
-def screen_end():
-    st.session_state.awaiting_response = False
-    st.session_state.t_start = None
-
-    st.title("סיום הניסוי")
-    st.success("תודה על השתתפותך!")
-    df = pd.DataFrame(st.session_state.results)
-    admin = is_admin()
-
-    if df.empty:
-        st.info("לא נאספו תוצאות.")
-    elif not st.session_state.get("results_saved", False):
-        try:
-            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.session_state.results_saved = True
-            st.success("התשובות נשלחו בהצלחה ✅")
-        except Exception as e:
-            if admin:
-                st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
-            else:
-                st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
-    else:
-        st.success("התשובות נשלחו בהצלחה ✅")
-
-    st.markdown(
-        f"""
-        <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
-            <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    if LOGO_PATH and WEBSITE_URL:
-        html = _file_to_base64_html_img_link(LOGO_PATH, WEBSITE_URL, width_px=140)
-        if html:
-            st.markdown(f"<div style='text-align:center; margin-top:10px;'>{html}</div>", unsafe_allow_html=True)
-        else:
-            st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
-    elif WEBSITE_URL:
-        st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
-    if admin and not df.empty:
-        st.download_button(
-            "הורדת תוצאות (CSV)",
-            data=df.to_csv(index=False, encoding="utf-8-sig"),
-            file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
-            mime="text/csv",
-        )
-        st.link_button("פתח/י את Google Sheet", f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit", type="primary")
-
-# ========= Router =========
-page = st.session_state.page
-if page == "welcome":
-    screen_welcome()
-elif page == "practice":
-    screen_practice()
-elif page == "practice_end":
-    screen_practice_end()
-elif page == "trial":
-    screen_trial()
-else:
-    screen_end()
+    _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press, show
