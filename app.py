@@ -316,8 +316,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=18, b=6),   # קטן מאוד כדי להצמיד כפתורים
-        height=420,
+        margin=dict(l=20, r=20, t=18, b=0),   # ↓ עוד צמצום מרווח מתחת לגרף
+        height=400,                            # ↓ מעט נמוך יותר, כדי להצמיד לכפתורים
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -329,11 +329,15 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# ---------- NEW: שורת כפתורים ממורכזת A–E ----------
-def render_choice_buttons(key_prefix: str, on_press, letters=("E","D","C","B","A")):
+# ---------- שורת כפתורים ממורכזת A–E ----------
+def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
     st.markdown("""
     <style>
-    .choice-wrap { display:flex; justify-content:center; gap: clamp(10px,1.6vw,22px); margin-top: 2px; }
+    .choice-wrap { 
+        display:flex; justify-content:center; 
+        gap: clamp(10px,1.6vw,22px); 
+        margin-top: clamp(-28px, -2.5vw, -12px); /* משוך למעלה – צמוד לגרף */
+    }
     .choice-wrap .stButton>button {
         width: clamp(44px, 6vw, 64px);
         height: clamp(44px, 6vw, 64px);
@@ -350,7 +354,6 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("E","D","C","B","A
     </style>
     """, unsafe_allow_html=True)
 
-    # עוטפים בעמודה האמצעית כדי ליישר למרכז הדף
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
         st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
@@ -491,6 +494,7 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
+        _safe_rerun()  # לחיצה אחת מספיקה – רענון מיידי
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
@@ -567,7 +571,7 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        # אין כאן rerun; שינוי ה-state יספיק
+        _safe_rerun()  # לחיצה אחת מספיקה – מעבר מיידי לשאלה הבאה
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
