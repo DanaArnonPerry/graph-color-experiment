@@ -300,7 +300,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     except Exception as e:
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
-            left, mid, right = st.columns([1,6,1])  # ← השורה הזאת צריכה להשתנות
+            left, mid, right = st.columns([2,8,2])  # ← השורה הזאת צריכה להשתנות
             with mid:
                 st.image(img, width=min(1500, img.width))
             st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
@@ -324,7 +324,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
         hovermode=False,
     )
-    left, mid, right = st.columns([1,6,1])  # ← השורה הזאת גם צריכה להשתנות
+    left, mid, right = st.columns([2,8,2])  # ← השורה הזאת גם צריכה להשתנות
     with mid:
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
