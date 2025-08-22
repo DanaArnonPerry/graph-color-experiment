@@ -1,6 +1,6 @@
 ﻿ID,V,ConditionFull,Color,Condition,LowowOrHhigh,ImageFileName,QuestionText,ChartNumber,A,B,C,D,E,QCorrectAnswer,ColorA,ColorB,ColorC,ColorD,ColorE
 1,V1,Chart1CL,Congruent,CL,Low,images/Chart1CL.PNG,באיזו עמודה מופיע הערך הנמוך ביותר?,Chart1,51,62,47,85,71,C,#595959,#595959,#FF0000,#92D050,#595959
-2,V1,Chart1CL,Congruent,CL,Low,images/Chart1CL.PNG,באיזו עמודה מופיע הערך הגבוה ביותר?,Chart1,68,87,65,71,44,C,#595959,#92D050,#595959,#595959,#FF0000
+2,V1,Chart1CL,Congruent,CL,Low,images/Chart1CL.PNG,באיזו עמודה מופיע הערך הגבוה ביותר?,Chart1,68,87,65,71,44,B,#595959,#92D050,#595959,#595959,#FF0000
 3,V1,Chart1CL,Congruent,CL,Low,images/Chart1CL.PNG,באיזו עמודה מופיע הערך הנמוך ביותר?,Chart1,76,39,62,84,53,B,#595959,#FF0000,#595959,#92D050,#595959
 4,V1,Chart4CH,Congruent,CH,High,images/Chart4CH.PNG,באיזו עמודה מופיע הערך הגבוה ביותר?,Chart4,87,56,79,42,65,A,#92D050,#595959,#595959,#FF0000,#595959
 5,V1,Chart10CH,Congruent,CH,High,images/Chart10CH.PNG,באיזו עמודה מופיע הערך הגבוה ביותר?,Chart10,62,85,48,71,93,E,#595959,#595959,#FF0000,#595959,#92D050
