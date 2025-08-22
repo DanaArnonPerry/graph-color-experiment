@@ -300,7 +300,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     except Exception as e:
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
-        left, mid, right = st.columns([2,8,2])  # בחלק של הגרף
+            left, mid, right = st.columns([1,6,1])  # ← השורה הזאת צריכה להשתנות
             with mid:
                 st.image(img, width=min(1500, img.width))
             st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
@@ -316,19 +316,19 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=6, b=0),   # ↓ עוד צמצום מרווח מתחת לגרף
-        height=400,                            # ↓ מעט נמוך יותר, כדי להצמיד לכפתורים
+        margin=dict(l=20, r=20, t=6, b=0),
+        height=400,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
         hovermode=False,
     )
-    left, mid, right = st.columns([2,8,2])  # בחלק של הגרף
+    left, mid, right = st.columns([1,6,1])  # ← השורה הזאת גם צריכה להשתנות
     with mid:
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
-
+        
 # ---------- שורת כפתורים ממורכזת A–E ----------
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
     st.markdown("""
