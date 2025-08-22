@@ -60,7 +60,7 @@ html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Ru
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* אפס מרווחים סביב גרף */
-div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: -20px !important; }
+div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 20px !important; }
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
 section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
 
