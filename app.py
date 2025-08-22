@@ -323,8 +323,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=6, b=0),   # ↓ עוד צמצום מרווח מתחת לגרף
-        height=280,                            # ↓ מעט נמוך יותר, כדי להצמיד לכפתורים
+        margin=dict(l=20, r=20, t=6, b=0),
+        height=280,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -336,7 +336,6 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# ---------- שורת כפתורים ממורכזת A–E ----------
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
     st.markdown("""
     <style>
@@ -405,24 +404,19 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    # טיימר קבוע למעלה
     st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
 
-    # אם הזמן נגמר – סוגרים את ה-trial (לא מתוך callback של כפתור)
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
         _safe_rerun()
         return
 
-    # מפתח ייחודי לכפתורים
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
     key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
-    # שורת כפתורים ממורכזת
     render_choice_buttons(key_prefix, on_press)
 
-    # רענון עדין פעם בשנייה לעדכון הטיימר
     if st.session_state.get("awaiting_response", False):
         time.sleep(1)
         _safe_rerun()
@@ -518,7 +512,7 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        _safe_rerun()  # לחיצה אחת מספיקה – רענון מיידי
+        _safe_rerun()
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
@@ -564,7 +558,10 @@ def screen_trial():
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"    _render_graph_block(title_html, t["QuestionText"], t)
+    
+    # תיקון: הפרדת השורות והחלפת המילה "תרגול" ל"שאלה"
+    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>שאלה {i+1} / {len(st.session_state.trials)}</div>"
+    _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
@@ -594,7 +591,7 @@ title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; ma
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        _safe_rerun()  # לחיצה אחת מספיקה – מעבר מיידי לשאלה הבאה
+        _safe_rerun()
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
