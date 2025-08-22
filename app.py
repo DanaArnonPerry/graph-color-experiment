@@ -564,10 +564,7 @@ def screen_trial():
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-    
-    # תיקון: השורה הבאה הייתה מחוברת בטעות לשורה הקודמת
-    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>שאלה {i+1} / {len(st.session_state.trials)}</div>"
-    _render_graph_block(title_html, t["QuestionText"], t)
+title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"    _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
@@ -597,3 +594,68 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
+        _safe_rerun()  # לחיצה אחת מספיקה – מעבר מיידי לשאלה הבאה
+
+    _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+
+def screen_end():
+    st.session_state.awaiting_response = False
+    st.session_state.t_start = None
+
+    st.title("סיום הניסוי")
+    st.success("תודה על השתתפותך!")
+    df = pd.DataFrame(st.session_state.results)
+    admin = is_admin()
+
+    if df.empty:
+        st.info("לא נאספו תוצאות.")
+    elif not st.session_state.get("results_saved", False):
+        try:
+            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+            st.session_state.results_saved = True
+            st.success("התשובות נשלחו בהצלחה ✅")
+        except Exception as e:
+            if admin:
+                st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
+            else:
+                st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
+    else:
+        st.success("התשובות נשלחו בהצלחה ✅")
+
+    st.markdown(
+        f"""
+        <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
+            <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if LOGO_PATH and WEBSITE_URL:
+        html = _file_to_base64_html_img_link(LOGO_PATH, WEBSITE_URL, width_px=140)
+        if html:
+            st.markdown(f"<div style='text-align:center; margin-top:10px;'>{html}</div>", unsafe_allow_html=True)
+        else:
+            st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+    elif WEBSITE_URL:
+        st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+    if admin and not df.empty:
+        st.download_button(
+            "הורדת תוצאות (CSV)",
+            data=df.to_csv(index=False, encoding="utf-8-sig"),
+            file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
+            mime="text/csv",
+        )
+        st.link_button("פתח/י את Google Sheet", f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit", type="primary")
+
+# ========= Router =========
+page = st.session_state.page
+if page == "welcome":
+    screen_welcome()
+elif page == "practice":
+    screen_practice()
+elif page == "practice_end":
+    screen_practice_end()
+elif page == "trial":
+    screen_trial()
+else:
+    screen_end()
