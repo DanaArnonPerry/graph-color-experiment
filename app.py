@@ -336,8 +336,8 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     .choice-wrap { 
         display: flex; 
         justify-content: space-evenly;  /* חלוקה שווה כמו עמודות הגרף */
-        margin-top: -40px;  /* מרווח קטן מהגרף */
-        margin-bottom: 80px;
+        margin-top: 10px;  /* מרווח קטן מהגרף */
+        margin-bottom: 150px;
         width: 100%;
     }
     .choice-wrap .stButton>button {
