@@ -334,30 +334,51 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     st.markdown("""
     <style>
     .choice-wrap { 
-        display:flex; justify-content:center; 
-        gap: clamp(10px,1.6vw,22px); 
-        margin-top: clamp(-28px, -2.5vw, -12px); /* משוך למעלה – צמוד לגרף */
+        display: flex; 
+        justify-content: space-evenly;  /* חלוקה שווה כמו עמודות הגרף */
+        margin-top: 10px;  /* מרווח קטן מהגרף */
+        margin-bottom: 15px;
+        width: 100%;
     }
     .choice-wrap .stButton>button {
-        width: clamp(44px, 6vw, 64px);
-        height: clamp(44px, 6vw, 64px);
-        border-radius: 9999px;
+        width: 70px;
+        height: 45px;
+        border-radius: 8px;
         background: #e5e7eb;
-        border: 1.5px solid #9ca3af;
+        border: 2px solid #9ca3af;
         font-weight: 800;
-        font-size: clamp(16px, 2.2vw, 20px);
+        font-size: 18px;
         color: #111;
-        box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        box-shadow: 0 2px 4px rgba(0,0,0,.1);
         padding: 0;
+        transition: all 0.2s ease;
     }
-    .choice-wrap .stButton>button:hover { filter: brightness(1.05); }
+    .choice-wrap .stButton>button:hover { 
+        background: #d1d5db;
+        border-color: #6b7280;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,.15);
+    }
+    .choice-wrap .stButton>button:active {
+        transform: translateY(0px);
+        box-shadow: 0 1px 2px rgba(0,0,0,.1);
+    }
+    
+    /* יישור מושלם עם עמודות הגרף */
+    .choice-wrap > div {
+        display: flex;
+        justify-content: center;
+        flex: 1;  /* כל כפתור תופס אותו מקום כמו עמודה */
+    }
     </style>
     """, unsafe_allow_html=True)
 
-    outer_cols = st.columns([1,6,1])
-    with outer_cols[1]:
+    # יצירת הלחצנים ביישור מושלם עם הגרף
+    left, mid, right = st.columns([1,6,1])
+    with mid:
         st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
-        cols = st.columns(len(letters), gap="small")
+        # יצירת 5 עמודות שוות בדיוק כמו בגרף
+        cols = st.columns(len(letters))
         for L, c in zip(letters, cols):
             with c:
                 if st.button(L, key=f"{key_prefix}_btn_{L}"):
