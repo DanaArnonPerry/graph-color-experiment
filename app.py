@@ -299,7 +299,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     except Exception as e:
         img = load_image(row_dict.get("ImageFileName", ""))
         if img is not None:
-            left, mid, right = st.columns([2,8,2])  # ← השורה הזאת צריכה להשתנות
+            left, mid, right = st.columns([2,8,2])
             with mid:
                 st.image(img, width=min(1500, img.width))
             st.info("טיפ: ניתן לעבור לגרף בקוד ע\"י הוספת ValueA..ValueE (ואופציונלית ColorA..ColorE).")
@@ -323,7 +323,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         yaxis=dict(title="", showgrid=False, showticklabels=False, zeroline=False),
         hovermode=False,
     )
-    left, mid, right = st.columns([2,8,2])  # ← השורה הזאת גם צריכה להשתנות
+    left, mid, right = st.columns([2,8,2])
     with mid:
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
@@ -334,8 +334,8 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     <style>
     .choice-wrap { 
         display: flex; 
-        justify-content: space-evenly;  /* חלוקה שווה כמו עמודות הגרף */
-        margin-top: -30px;  /* מרווח קטן מהגרף */
+        justify-content: space-evenly;
+        margin-top: -30px;
         margin-bottom: -40px;
         width: 100%;
     }
@@ -367,16 +367,15 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     .choice-wrap > div {
         display: flex;
         justify-content: center;
-        flex: 1;  /* כל כפתור תופס אותו מקום כמו עמודה */
+        flex: 1;
     }
     </style>
     """, unsafe_allow_html=True)
 
     # יצירת הלחצנים ביישור מושלם עם הגרף
-    left, mid, right = st.columns([1,6,1])
+    left, mid, right = st.columns([2,8,2])
     with mid:
         st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
-        # יצירת 5 עמודות שוות בדיוק כמו בגרף
         cols = st.columns(len(letters))
         for L, c in zip(letters, cols):
             with c:
@@ -487,7 +486,7 @@ def _practice_one(idx: int):
         st.session_state.last_feedback_html = ""
     
     t = st.session_state.practice_list[idx]
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-top:-15px; margin-bottom:0.2rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
     def on_timeout():
@@ -569,7 +568,7 @@ def screen_trial():
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-top:-15px; margin-bottom:0.2rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
@@ -600,68 +599,6 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        _safe_rerun()  # לחיצה אחת מספיקה – מעבר מיידי לשאלה הבאה
+        _safe_rerun()
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
-
-def screen_end():
-    st.session_state.awaiting_response = False
-    st.session_state.t_start = None
-
-    st.title("סיום הניסוי")
-    st.success("תודה על השתתפותך!")
-    df = pd.DataFrame(st.session_state.results)
-    admin = is_admin()
-
-    if df.empty:
-        st.info("לא נאספו תוצאות.")
-    elif not st.session_state.get("results_saved", False):
-        try:
-            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
-            st.session_state.results_saved = True
-            st.success("התשובות נשלחו בהצלחה ✅")
-        except Exception as e:
-            if admin:
-                st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
-            else:
-                st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
-    else:
-        st.success("התשובות נשלחו בהצלחה ✅")
-
-    st.markdown(
-        f"""
-        <div style="display:flex; justify-content:center; align-items:center; margin:24px 0;">
-            <img src="{SHERLOCK_GITHUB_URL}" width="{SHERLOCK_IMG_WIDTH}" alt="Sherlock" />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    if LOGO_PATH and WEBSITE_URL:
-        html = _file_to_base64_html_img_link(LOGO_PATH, WEBSITE_URL, width_px=140)
-        if html:
-            st.markdown(f"<div style='text-align:center; margin-top:10px;'>{html}</div>", unsafe_allow_html=True)
-        else:
-            st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
-    elif WEBSITE_URL:
-        st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
-    if admin and not df.empty:
-        st.download_button(
-            "הורדת תוצאות (CSV)",
-            data=df.to_csv(index=False, encoding="utf-8-sig"),
-            file_name=f"{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv",
-            mime="text/csv",
-        )
-        st.link_button("פתח/י את Google Sheet", f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/edit", type="primary")
-
-# ========= Router =========
-page = st.session_state.page
-if page == "welcome":
-    screen_welcome()
-elif page == "practice":
-    screen_practice()
-elif page == "practice_end":
-    screen_practice_end()
-elif page == "trial":
-    screen_trial()
-else:
-    screen_end()
