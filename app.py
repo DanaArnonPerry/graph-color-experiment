@@ -564,8 +564,7 @@ def screen_trial():
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;">..."
-    _render_graph_block(title_html, t["QuestionText"], t)
+title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"    _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
