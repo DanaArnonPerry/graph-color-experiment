@@ -314,7 +314,7 @@ def _render_graph_block(title_html, question_text, row_dict):
         textposition="outside", texttemplate="<b>%{text}</b>",
         cliponaxis=False
     ))
-    fig.update_traces(textfont=dict(size=20, color="#111"))
+    fig.update_traces(textfont=dict(size=30, color="#111"))
     fig.update_layout(
         margin=dict(l=20, r=20, t=18, b=0),   # ↓ עוד צמצום מרווח מתחת לגרף
         height=400,                            # ↓ מעט נמוך יותר, כדי להצמיד לכפתורים
