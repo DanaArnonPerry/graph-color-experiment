@@ -58,19 +58,12 @@ st.markdown(
 <style>
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
-
-/* אפס מרווחים סביב גרף */
-div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
+div[data-testid="stPlotlyChart"]{ margin-bottom: 0 !important; }
+h3 { margin-bottom: 8px !important; }
+button[title="View fullscreen"]{ display:none !important; }
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { 
-  padding-top: 0.5rem; 
-  padding-bottom: 0.5rem; 
-  max-height: 100vh;
-  overflow: hidden;
-}
-.element-container { margin-bottom: 0.3rem !important; }
-h3 { font-size: 1.1rem !important; margin-bottom: 0.2rem !important; }
+section.main > div.block-container { padding-top: 10px; padding-bottom: 16px; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -323,8 +316,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=6, b=0),
-        height=280,
+        margin=dict(l=20, r=20, t=20, b=0),
+        height=420,  # גובה סביר, מפחית גלילה
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -336,56 +329,50 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    st.markdown("""
+def render_answer_bar(
+    key: str,
+    options=("A","B","C","D","E"),
+    on_change=None,
+    size="clamp(36px, 5.5vw, 56px)",
+    gap="clamp(10px, 1.8vw, 24px)",
+    font="clamp(16px, 2.1vw, 20px)",
+    weight=800,
+    shape="circle",
+    top_margin_px=6,
+    bg="#e5e7eb", border="#9ca3af", active_bg="#d1d5db", active_border="#6b7280",
+    show_letter=False
+):
+    radius = {"pill":"10px", "square":"6px", "circle":"9999px"}.get(str(shape).lower(), "10px")
+    uid = f"ab_{key}"
+    st.markdown(f"""
     <style>
-    .choice-wrap { 
-        display: flex; 
-        justify-content: space-evenly;
-        margin-top: -25px;
-        margin-bottom: 5px;
-        width: 100%;
-    }
-    .choice-wrap .stButton>button {
-        width: 60px;
-        height: 40px;
-        border-radius: 8px;
-        background: #e5e7eb;
-        border: 2px solid #9ca3af;
-        font-weight: 800;
-        font-size: 16px;
-        color: #111;
-        box-shadow: 0 2px 4px rgba(0,0,0,.1);
-        padding: 0;
-        transition: all 0.2s ease;
-    }
-    .choice-wrap .stButton>button:hover { 
-        background: #d1d5db;
-        border-color: #6b7280;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,.15);
-    }
-    .choice-wrap .stButton>button:active {
-        transform: translateY(0px);
-        box-shadow: 0 1px 2px rgba(0,0,0,.1);
-    }
-    .choice-wrap > div {
-        display: flex;
-        justify-content: center;
-        flex: 1;
-    }
+    #{uid} [data-testid="stRadio"] > div[role="radiogroup"] {{
+        display: grid !important;
+        grid-auto-flow: column !important;
+        grid-template-columns: repeat({len(options)}, {size}) !important;
+        justify-content: center; align-items: center !important;
+        column-gap: {gap}; padding: 0; margin: 0; overflow: visible; width: 100%;
+    }}
+    #{uid} [role="radiogroup"] label {{
+        place-self: center; width: {size}; height: {size}; border-radius: {radius};
+        background: {bg}; border: 1.5px solid {border}; box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: {weight}; font-size: {font}; color: #111;
+        cursor: pointer; user-select: none;
+        {"font-size:0; line-height:0;" if not show_letter else ""}
+    }}
+    #{uid} [role="radiogroup"] input[type="radio"]{{ position:absolute; opacity:0; pointer-events:none; width:0; height:0; }}
+    #{uid} [role="radiogroup"] label:hover {{ filter: brightness(1.03); }}
+    #{uid} [role="radiogroup"] label:has(input[type="radio"]:checked) {{
+        background:{active_bg}; border-color:{active_border}; box-shadow: inset 0 0 0 2px #9ca3af33;
+    }}
     </style>
     """, unsafe_allow_html=True)
-
-    left, mid, right = st.columns([1,6,1])
-    with mid:
-        st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
-        cols = st.columns(len(letters))
-        for L, c in zip(letters, cols):
-            with c:
-                if st.button(L, key=f"{key_prefix}_btn_{L}"):
-                    on_press(L)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f'<div id="{uid}" style="margin-top:{top_margin_px}px">', unsafe_allow_html=True)
+    # חשוב: תווית לא ריקה כדי למנוע אזהרות
+    st.radio("בחר/י תשובה", options, key=key, index=None,
+             label_visibility="collapsed", horizontal=True, on_change=on_change)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def _safe_rerun():
     try:
@@ -397,26 +384,39 @@ def _safe_rerun():
             pass
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
+    """מציג פס טיימר עליון + כפתורי A–E. דואג לרענון עדין פעם בשנייה."""
     if not st.session_state.get("awaiting_response", False):
         return
 
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
+    # טיימר קבוע למעלה
+    st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
+                unsafe_allow_html=True)
 
+    # אם הזמן נגמר – סוגרים את ה-trial. (לא בתוך callback)
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
         _safe_rerun()
         return
 
+    # מפתח ייחודי לכפתורי הבחירה
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
-    key_prefix = f"choice_{st.session_state.page}_{current_index}"
+    radio_key = f"radio_{st.session_state.page}_{current_index}"
 
-    render_choice_buttons(key_prefix, on_press)
+    def _on_change():
+        choice = st.session_state.get(radio_key)
+        if st.session_state.awaiting_response and choice:
+            # חשוב: לא מבצעים כאן rerun. שינוי ה-state יגרום ל-rerun אוטומטי.
+            on_press(str(choice))
 
+    outer_cols = st.columns([1,6,1])
+    with outer_cols[1]:
+        render_answer_bar(key=radio_key, on_change=_on_change, options=("A","B","C","D","E"))
+
+    # רענון עדין פעם בשנייה לעדכון הטיימר
     if st.session_state.get("awaiting_response", False):
         time.sleep(1)
         _safe_rerun()
@@ -512,7 +512,6 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        _safe_rerun()
 
     if st.session_state.awaiting_response:
         _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
@@ -558,9 +557,7 @@ def screen_trial():
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-    
-    # תיקון: הפרדת השורות והחלפת המילה "תרגול" ל"שאלה"
-    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>שאלה {i+1} / {len(st.session_state.trials)}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
@@ -583,7 +580,7 @@ def screen_trial():
 
     def on_timeout():
         finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
-        _safe_rerun()
+        _safe_rerun()  # לא בתוך callback
 
     def on_press(key):
         rt = time.time() - (st.session_state.t_start or time.time())
@@ -591,7 +588,7 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        _safe_rerun()
+        # אין כאן rerun — ה־callback עצמו יגרום לרענון אוטומטי
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
