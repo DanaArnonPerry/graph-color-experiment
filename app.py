@@ -467,7 +467,7 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     .choice-wrap { 
         display:flex; justify-content:center; 
         gap: clamp(10px,1.6vw,22px); 
-        margin-top: clamp(-28px, -2.5vw, -12px);
+        margin-top: var(--buttons-up);
     }
     .choice-wrap .stButton>button {
         width: clamp(44px, 6vw, 64px);
