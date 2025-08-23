@@ -570,9 +570,8 @@ def _practice_one(idx: int):
     _render_progress(idx, total, label=f"תרגול {idx+1}/{total}")
 
     t = st.session_state.practice_list[idx]
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {total}</div>"
-    _render_graph_block(title_html, t["QuestionText"], t)
-
+    _render_graph_block("", t["QuestionText"], t)
+  
     if st.session_state.last_feedback_html:
         st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
 
