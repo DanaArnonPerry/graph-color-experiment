@@ -23,8 +23,8 @@ import gspread
 from google.oauth2 import service_account
 
 # ========= Parameters =========
-N_TRIALS = 40
-TRIAL_TIMEOUT_SEC = 30
+N_TRIALS_DEFAULT = 40  # ← ניתן לשינוי בפרמטר כתובת ?n=
+TRIAL_TIMEOUT_DEFAULT = 30  # ← ניתן לשינוי בפרמטר כתובת ?timeout=
 DATA_PATH = "data/colors_in_charts.csv"
 
 GSHEET_ID = "1ePIoLpP0Y0d_SedzVcJT7ttlV_1voLTssTvWAqpMkqQ"
@@ -41,6 +41,29 @@ USER_PHOTO_CANDIDATES = ["images/DanaSherlock.png", "DanaSherlock.png"]
 WEBSITE_URL = "http://www.2dpoint.co.il"
 SHERLOCK_GITHUB_URL = "https://raw.githubusercontent.com/danaarnonperry/graph-color-experiment/main/DanaSherlock.png"
 SHERLOCK_IMG_WIDTH = 160
+
+# ========= Helpers for query-params (חדש) =========
+# תומך גם ב-st.query_params וגם ב-fallback ישן
+
+def _qp_raw(name, default=None):
+    try:
+        val = st.query_params.get(name)
+        return default if val is None else val
+    except Exception:
+        return st.experimental_get_query_params().get(name, [default])[0]
+
+def _qp_int(name, default):
+    try:
+        val = _qp_raw(name, default)
+        return int(val) if val is not None else default
+    except Exception:
+        return default
+
+def _qp_str(name, default):
+    val = _qp_raw(name, default)
+    return default if val is None else str(val)
+
+# ========= Pick first-existing =========
 
 def _first_existing(paths):
     for p in paths:
@@ -81,11 +104,13 @@ footer {visibility: hidden;}
 )
 
 # ========= Session State =========
+
 def _admin_ui_enabled() -> bool:
     try:
         return (st.query_params.get("admin") == "1")
     except Exception:
         return (st.experimental_get_query_params().get("admin", ["0"])[0] == "1")
+
 
 def init_state():
     ss = st.session_state
@@ -104,9 +129,25 @@ def init_state():
     ss.setdefault("awaiting_response", False)
     ss.setdefault("last_feedback_html", "")
     ss.setdefault("results_saved", False)
+    # חדש – פרמטרים דינמיים מהרצת ה-URL
+    ss.setdefault("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
+    ss.setdefault("n_trials_req", N_TRIALS_DEFAULT)
+    ss.setdefault("trial_start_iso", "")
+
 init_state()
 
+# עדכון פרמטרים מה-URL (חדש)
+st.session_state.timeout_sec = _qp_int("timeout", st.session_state.timeout_sec)
+st.session_state.n_trials_req = _qp_int("n", st.session_state.n_trials_req)
+_seed = _qp_str("seed", None)
+if _seed is not None and _seed != "None":
+    try:
+        random.seed(int(_seed))
+    except Exception:
+        random.seed(_seed)
+
 # ========= Admin =========
+
 def is_admin(show_ui: bool = False):
     show = show_ui or _admin_ui_enabled()
     if show:
@@ -134,6 +175,7 @@ def is_admin(show_ui: bool = False):
     return st.session_state.is_admin
 
 # ========= Data =========
+
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
@@ -150,6 +192,7 @@ def load_data():
     return df
 
 # ========= Google Sheets =========
+
 def _read_service_account_from_secrets() -> dict:
     try:
         sa = dict(st.secrets["service_account"])
@@ -169,6 +212,7 @@ def _read_service_account_from_secrets() -> dict:
         raise RuntimeError("Service Account לא נמצא ב-secrets.")
     return sa
 
+
 @st.cache_resource
 def _gs_client():
     sa_info = _read_service_account_from_secrets()
@@ -181,6 +225,7 @@ def _gs_client():
     )
     return gspread.authorize(creds)
 
+
 def _ensure_headers(ws, expected_headers):
     current = ws.get_all_values()
     headers = list(expected_headers)
@@ -189,6 +234,7 @@ def _ensure_headers(ws, expected_headers):
     first_row = current[0] if current else []
     if first_row != headers:
         ws.update("1:1", [headers])
+
 
 def get_next_participant_seq(sheet_id: str) -> int:
     gc = _gs_client()
@@ -207,6 +253,7 @@ def get_next_participant_seq(sheet_id: str) -> int:
     meta.update("A2", str(nxt))
     return nxt
 
+
 def _ensure_participant_id():
     if st.session_state.participant_id:
         return
@@ -215,6 +262,7 @@ def _ensure_participant_id():
         st.session_state.participant_id = f"S{seq:05d}"
     except Exception:
         st.session_state.participant_id = f"S{int(time.time())}"
+
 
 def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: str = "Results"):
     gc = _gs_client(); sh = gc.open_by_key(sheet_id)
@@ -226,7 +274,28 @@ def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: 
     if not df.empty:
         ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
 
+# חדש – כתיבה עם ניסיונות חוזרים + גיבוי לוקאלי
+
+def _write_results_with_retry(df: pd.DataFrame, retries: int = 3, base_delay: float = 1.5):
+    last_err = None
+    for attempt in range(retries):
+        try:
+            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+            return True, None
+        except Exception as e:
+            last_err = e
+            time.sleep(base_delay * (2 ** attempt))
+    # גיבוי לוקאלי אם כל הניסיונות כשלו
+    os.makedirs("results", exist_ok=True)
+    fname = f"results/{st.session_state.participant_id}_{st.session_state.run_start_iso.replace(':','-')}.csv"
+    try:
+        df.to_csv(fname, index=False, encoding="utf-8-sig")
+        return False, f"נכשלו ניסיונות הכתיבה ל-Google Sheets. נשמר גיבוי מקומי: {fname}"
+    except Exception as e2:
+        return False, f"נכשלו הכתיבה ל-Google Sheets וגם לגיבוי מקומי ({type(e2).__name__}: {e2}). השגיאה המקורית: {type(last_err).__name__}: {last_err}"
+
 # ========= Utils =========
+
 def load_image(path: str):
     if not path:
         return None
@@ -243,6 +312,7 @@ def load_image(path: str):
         return img
     except Exception:
         return None
+
 
 def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
     if "V" in pool_df.columns:
@@ -263,6 +333,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
         if len(pool_df) <= n_needed:
             return pool_df.sample(frac=1, random_state=None).to_dict(orient="records")
         return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
+
 
 def _extract_option_values_and_colors(row: dict):
     letters = ["E","D","C","B","A"]
@@ -286,11 +357,21 @@ def _extract_option_values_and_colors(row: dict):
     x = letters; y = [vals[L] for L in letters]; c = [colors[L] for L in letters]
     return x, y, c
 
+
 def _correct_phrase(question_text: str) -> str:
     q = str(question_text or "")
     if ("נמוך" in q) or ("lowest" in q.lower()):  return "עם הערך הנמוך ביותר"
     if ("גבוה" in q) or ("highest" in q.lower()): return "עם הערך הגבוה ביותר"
     return "התשובה הנכונה"
+
+
+# ========= Small UI helpers (חדש) =========
+
+def _render_progress(current_index: int, total: int, label: str = ""):
+    col = st.columns([1,6,1])[1]
+    with col:
+        st.progress((current_index) / max(1, total), text=label or f"{current_index}/{total}")
+
 
 def _render_graph_block(title_html, question_text, row_dict):
     st.markdown(title_html, unsafe_allow_html=True)
@@ -316,8 +397,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=18, b=0),   # ↓ עוד צמצום מרווח מתחת לגרף
-        height=400,                            # ↓ מעט נמוך יותר, כדי להצמיד לכפתורים
+        margin=dict(l=20, r=20, t=18, b=0),
+        height=400,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -329,14 +410,17 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
+
 # ---------- שורת כפתורים ממורכזת A–E ----------
+
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .choice-wrap { 
         display:flex; justify-content:center; 
         gap: clamp(10px,1.6vw,22px); 
-        margin-top: clamp(-28px, -2.5vw, -12px); /* משוך למעלה – צמוד לגרף */
+        margin-top: clamp(-28px, -2.5vw, -12px);
     }
     .choice-wrap .stButton>button {
         width: clamp(44px, 6vw, 64px);
@@ -364,6 +448,7 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
                     on_press(L)
         st.markdown('</div>', unsafe_allow_html=True)
 
+
 def _safe_rerun():
     try:
         st.rerun()
@@ -372,6 +457,7 @@ def _safe_rerun():
             st.experimental_rerun()
         except Exception:
             pass
+
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
@@ -384,7 +470,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     # טיימר קבוע למעלה
     st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
 
-    # אם הזמן נגמר – סוגרים את ה-trial (לא מתוך callback של כפתור)
+    # אם הזמן נגמר – סוגרים את ה-trial
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
         _safe_rerun()
@@ -403,6 +489,7 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         time.sleep(1)
         _safe_rerun()
 
+
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
     try:
         ext = os.path.splitext(path)[1].lower()
@@ -416,6 +503,7 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
         return ""
 
 # ========= Screens =========
+
 def screen_welcome():
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
@@ -443,13 +531,18 @@ def screen_welcome():
     total_rows = len(df)
     if total_rows < 2:
         st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
-    if total_rows < 2 + N_TRIALS:
-        st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום 40. נריץ את הקיים.")
+
+    # עדכון טקסט לפי פרמטרים דינמיים
+    if st.session_state.timeout_sec != TRIAL_TIMEOUT_DEFAULT or st.session_state.n_trials_req != N_TRIALS_DEFAULT:
+        st.info(f"הרצה זו תוגדר עם {st.session_state.n_trials_req} שאלות וזמן {st.session_state.timeout_sec} שניות לשאלה (ע\"י פרמטרי כתובת URL).")
+
+    if total_rows < 2 + st.session_state.n_trials_req:
+        st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום {st.session_state.n_trials_req}. נריץ את הקיים.")
 
     def on_start():
         _ensure_participant_id()
         st.session_state.run_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
-        n_trials_final = min(N_TRIALS, max(0, total_rows - 2))
+        n_trials_final = min(st.session_state.n_trials_req, max(0, total_rows - 2))
         practice_items = df.iloc[:2].to_dict(orient="records")
         pool_df = df.iloc[2: 2 + n_trials_final].copy()
         trials = build_alternating_trials(pool_df, n_trials_final)
@@ -465,13 +558,19 @@ def screen_welcome():
 
     st.button("המשך לתרגול", on_click=on_start)
 
+
 def _practice_one(idx: int):
+    total = len(st.session_state.practice_list)
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
         st.session_state.awaiting_response = True
         st.session_state.last_feedback_html = ""
+        st.session_state.trial_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
+
+    _render_progress(idx, total, label=f"תרגול {idx+1}/{total}")
+
     t = st.session_state.practice_list[idx]
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {total}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
     if st.session_state.last_feedback_html:
@@ -499,10 +598,10 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        _safe_rerun()  # לחיצה אחת מספיקה – רענון מיידי
+        _safe_rerun()
 
     if st.session_state.awaiting_response:
-        _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+        _radio_answer_and_timer(st.session_state.timeout_sec, on_timeout, on_press)
     else:
         center = st.columns([1,6,1])[1]
         def on_next():
@@ -515,8 +614,10 @@ def _practice_one(idx: int):
         with center:
             st.button("המשך", key=f"practice_next_{idx}", on_click=on_next)
 
+
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
+
 
 def screen_practice_end():
     st.session_state.awaiting_response = False
@@ -538,20 +639,26 @@ def screen_practice_end():
     with mid:
         st.button("התחל", type="primary", on_click=on_start)
 
+
 def screen_trial():
+    total = len(st.session_state.trials)
     if st.session_state.t_start is None:
         st.session_state.t_start = time.time()
         st.session_state.awaiting_response = True
+        st.session_state.trial_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
     i = st.session_state.i
+    _render_progress(i, total, label=f"גרף {i+1}/{total}")
+
     t = st.session_state.trials[i]
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1} מתוך {total}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
             "ParticipantID": st.session_state.participant_id,
             "RunStartISO": st.session_state.run_start_iso,
+            "TrialStartISO": st.session_state.trial_start_iso,
             "TrialIndex": st.session_state.i + 1,
             "ID": t["ID"],
             "ResponseKey": resp_key or "",
@@ -567,7 +674,7 @@ def screen_trial():
             st.session_state.page = "end"
 
     def on_timeout():
-        finish_with(resp_key=None, rt_sec=float(TRIAL_TIMEOUT_SEC), correct=0)
+        finish_with(resp_key=None, rt_sec=float(st.session_state.timeout_sec), correct=0)
         _safe_rerun()
 
     def on_press(key):
@@ -576,9 +683,10 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        _safe_rerun()  # לחיצה אחת מספיקה – מעבר מיידי לשאלה הבאה
+        _safe_rerun()
 
-    _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+    _radio_answer_and_timer(st.session_state.timeout_sec, on_timeout, on_press)
+
 
 def screen_end():
     st.session_state.awaiting_response = False
@@ -592,15 +700,22 @@ def screen_end():
     if df.empty:
         st.info("לא נאספו תוצאות.")
     elif not st.session_state.get("results_saved", False):
-        try:
-            append_dataframe_to_gsheet(df, GSHEET_ID, worksheet_name=GSHEET_WORKSHEET_NAME)
+        ok, msg = _write_results_with_retry(df, retries=3)
+        if ok:
             st.session_state.results_saved = True
             st.success("התשובות נשלחו בהצלחה ✅")
-        except Exception as e:
+        else:
             if admin:
-                st.error(f"נכשלה כתיבה ל-Google Sheets: {type(e).__name__}: {e}")
+                st.error(msg)
+                if st.button("נסה כתיבה חוזרת ל-Google Sheets"):
+                    ok2, msg2 = _write_results_with_retry(df, retries=2)
+                    if ok2:
+                        st.session_state.results_saved = True
+                        st.success("נשמר בהצלחה לאחר ניסיון חוזר ✅")
+                    else:
+                        st.error(msg2)
             else:
-                st.info("התשובות נשלחו. אם יידרש, נבצע שמירה חוזרת מאחורי הקלעים.")
+                st.warning("התשובות נשמרו בקובץ גיבוי מקומי. ניתן להוריד למטה ולשלוח/לשמור ידנית.")
     else:
         st.success("התשובות נשלחו בהצלחה ✅")
 
@@ -620,6 +735,7 @@ def screen_end():
             st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
     elif WEBSITE_URL:
         st.link_button("לאתר שלי", WEBSITE_URL, type="primary")
+
     if admin and not df.empty:
         st.download_button(
             "הורדת תוצאות (CSV)",
