@@ -756,7 +756,7 @@ def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
 
-    # ===== עיצוב ממוקד למסך סיום התרגול + התוכן =====
+    # --- CSS בלבד (אין כאן format, לכן אין התנגשות עם {}) ---
     st.markdown("""
     <style>
       .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
@@ -771,7 +771,12 @@ def screen_practice_end():
       }
       .end-actions .stButton>button:hover{ filter:brightness(1.06); }
     </style>
+    """, unsafe_allow_html=True)
 
+    # --- ה-HTML עם הערך הדינמי באמצעות f-string בלבד ---
+    timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
+
+    st.markdown(f"""
     <div class="end-wrap">
       <div class="end-title">התרגול הסתיים 🎉</div>
       <div class="end-sub">לפני שממשיכים לניסוי האמיתי, קראו בקצרה את ההנחיות:</div>
@@ -781,9 +786,9 @@ def screen_practice_end():
         <li>ענו במהירות – אין אפשרות לחזור אחורה.</li>
       </ul>
     </div>
-    """.format(timeout=st.session_state.timeout_sec), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    # כפתור הפעולה (ניתן לשנות את הטקסט "התחל")
+    # כפתור ההמשך
     mid = st.columns([1,6,1])[1]
     def on_start():
         st.session_state.page = "trial"
@@ -792,10 +797,8 @@ def screen_practice_end():
         st.session_state.last_feedback_html = ""
     with mid:
         st.markdown('<div class="end-actions">', unsafe_allow_html=True)
-        st.button(" מתחילים ▶︎ ", on_click=on_start)  # ← שימי כאן את הטקסט שתרצי
+        st.button(" מתחילים ▶︎ ", on_click=on_start)
         st.markdown('</div>', unsafe_allow_html=True)
-
-
 
 def screen_trial():
     total = len(st.session_state.trials)
