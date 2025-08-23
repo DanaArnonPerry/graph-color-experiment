@@ -78,13 +78,27 @@ USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
 st.markdown(
     """
-<style>
-/* ===== כוונוני פריסה כלליים ===== */
+    <style>
+    /* החוקים יחולו רק על הבלוק שאחרי #buttons-row (האח הצמוד שה- columns יוצרים) */
+    #buttons-row + div [data-testid="stHorizontalBlock"]{
+      gap: 6px !important;
+      column-gap: 6px !important;
+      row-gap: 0 !important;
+    }
+    #buttons-row + div div.stButton{ margin: 0 !important; }
+    #buttons-row + div [data-testid="column"]{
+      padding-left: 2px !important;
+      padding-right: 2px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 /* אפס מרווחים סביב גרף */
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
-/* קומפקטיות - פחות רווחים כדי למנוע גלילה */
+/* קומפקטיות – פחות רווחים כדי למנוע גלילה */
 section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
 
 /* טיימר מקובע למעלה באמצע */
@@ -96,7 +110,7 @@ section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
 }
 
 /* פסי רווח תחתונים מיותרים */
-footer { visibility: hidden; }
+footer {visibility: hidden;}
 </style>
 """,
     unsafe_allow_html=True,
