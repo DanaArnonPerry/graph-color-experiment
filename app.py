@@ -106,32 +106,57 @@ footer {visibility: hidden;}
 
 st.markdown("""
 <style>
-/* ==== st.progress color override (robust) ==== */
+/* ===== Progress bar colors – work with both DOM variants ===== */
 
-/* מסילת הרקע */
-div[data-testid="stProgress"] div[role="progressbar"],
-div[data-testid="stProgressBar"] div[role="progressbar"] {
-  background: #e5e7eb !important;          /* TRACK */
+/* ── NEWER: <progress> element ─────────────────────────────── */
+div[data-testid="stProgress"] progress,
+div[data-testid="stProgressBar"] progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  border: none;
+  background: transparent;            /* נבטל רקע דיפולט */
 }
 
-/* המילוי (החלק שזז) */
-div[data-testid="stProgress"] div[role="progressbar"] > div,
-div[data-testid="stProgressBar"] div[role="progressbar"] > div {
-  background: #000000 !important;           /* FILL – החליפי לצבע הרצוי */
-  background-image: none !important;         /* מבטל גרדיאנט כחול בחלק מהגרסאות */
+/* track */
+div[data-testid="stProgress"] progress::-webkit-progress-bar,
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
+  background-color: #e5e7eb !important;
+  border-radius: 9999px;
+}
+/* fill */
+div[data-testid="stProgress"] progress::-webkit-progress-value,
+div[data-testid="stProgressBar"] progress::-webkit-progress-value {
+  background-color: #000000 !important;   /* ← הצבע החדש */
+  border-radius: 9999px;
+}
+/* Firefox */
+div[data-testid="stProgress"] progress::-moz-progress-bar,
+div[data-testid="stProgressBar"] progress::-moz-progress-bar {
+  background-color: #000000 !important;
+  border-radius: 9999px;
 }
 
-/* אופציונלי: עיגול פינות של הסרגל */
+/* ── OLDER: div-based progressbar (fallback) ───────────────── */
 div[data-testid="stProgress"] div[role="progressbar"],
 div[data-testid="stProgressBar"] div[role="progressbar"] {
+  background-color: #e5e7eb !important;      /* track */
+  background-image: none !important;
   border-radius: 9999px !important;
 }
 div[data-testid="stProgress"] div[role="progressbar"] > div,
 div[data-testid="stProgressBar"] div[role="progressbar"] > div {
+  background-color: #000000 !important;      /* fill */
+  background-image: none !important;
   border-radius: 9999px !important;
 }
+
+/* אופציונלי: לוודא שהטוקן של התמה לא יכתיב כחול */
+:root { --primary-color: #000000; --primaryColor: #000000; }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ========= Session State =========
 
