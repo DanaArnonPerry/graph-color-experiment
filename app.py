@@ -197,6 +197,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+:root{
+  --buttons-gap: 24px;   /* המרווח המדויק בין הכפתורים */
+}
+.choice-wrap [data-testid="stHorizontalBlock"]{
+  gap: var(--buttons-gap) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # ========= Session State =========
 
 def _admin_ui_enabled() -> bool:
