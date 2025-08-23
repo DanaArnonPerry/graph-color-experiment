@@ -265,7 +265,7 @@ def build_alternating_trials(pool_df: pd.DataFrame, n_needed: int):
         return pool_df.sample(n=n_needed, replace=False, random_state=None).to_dict(orient="records")
 
 def _extract_option_values_and_colors(row: dict):
-    letters = ["A","B","C","D","E"]
+    letters = ["E","D","C","B","A"]
     vals = {}
     for L in letters:
         if f"Value{L}" in row and str(row[f"Value{L}"]).strip() != "":
