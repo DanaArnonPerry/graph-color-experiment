@@ -101,21 +101,35 @@ footer {visibility: hidden;}
 </style>
 """,
     unsafe_allow_html=True,
-)
 st.markdown("""
 <style>
-/* track */
-div[data-testid="stProgress"] > div > div,
+/* ==== st.progress color override (robust) ==== */
+
+/* מסילת הרקע */
+div[data-testid="stProgress"] div[role="progressbar"],
 div[data-testid="stProgressBar"] div[role="progressbar"] {
-  background-color: #000000;
+  background: #e5e7eb !important;          /* TRACK */
 }
-/* fill */
-div[data-testid="stProgress"] > div > div > div,
+
+/* המילוי (החלק שזז) */
+div[data-testid="stProgress"] div[role="progressbar"] > div,
 div[data-testid="stProgressBar"] div[role="progressbar"] > div {
-  background-color: #D9D9D9 !important;  /* החליפי לצבע הרצוי */
+  background: #16a34a !important;           /* FILL – החליפי לצבע הרצוי */
+  background-image: none !important;         /* מבטל גרדיאנט כחול בחלק מהגרסאות */
+}
+
+/* אופציונלי: עיגול פינות של הסרגל */
+div[data-testid="stProgress"] div[role="progressbar"],
+div[data-testid="stProgressBar"] div[role="progressbar"] {
+  border-radius: 9999px !important;
+}
+div[data-testid="stProgress"] div[role="progressbar"] > div,
+div[data-testid="stProgressBar"] div[role="progressbar"] > div {
+  border-radius: 9999px !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
