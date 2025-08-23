@@ -215,7 +215,7 @@ st.markdown("""
 <style>
 /* מצמצם את המרווח בין העמודות בשורה שיש בה כפתורי Streamlit */
 div[data-testid="stHorizontalBlock"]:has(> div [data-testid="stButton"]) {
-  gap: 6px !important;            /* <<< שנהי לכמה שרוצים */
+  gap: 2px !important;            /* <<< שנהי לכמה שרוצים */
 }
 
 /* מצמצם גם את הפאדינג הפנימי של כל עמודה בשורה הזו */
