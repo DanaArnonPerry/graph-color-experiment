@@ -1,4 +1,4 @@
-תבדוק האם הקוד הזה תקין או שיש בו שגיאות? # app.py
+# app.py
 import os
 import time
 import random
