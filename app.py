@@ -495,9 +495,9 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_xaxes(
-    tickfont=dict(size=18, color="#111111", family="Rubik, Segoe UI, Arial"),
-    tickangle=0,       # אופציונלי: סיבוב התוויות
-    
+        tickfont=dict(size=18, color="#111111", family="Rubik, Segoe UI, Arial"),
+        tickangle=0,       # אופציונלי: סיבוב התוויות
+    )
     fig.update_layout(
         margin=dict(l=20, r=20, t=18, b=0),
         height=320,
