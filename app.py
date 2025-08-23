@@ -756,49 +756,54 @@ def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
 
-    # --- CSS בלבד (אין כאן format, לכן אין התנגשות עם {}) ---
-    st.markdown("""
-    <style>
-      .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
-      .end-title{ font-size:clamp(26px,3vw,36px); font-weight:800; margin-bottom:8px; }
-      .end-sub{ font-size:clamp(18px,2.2vw,22px); margin:12px 0 18px; }
-      .end-list{ text-align:right; margin:0 auto 18px; padding:0 20px; }
-      .end-list li{ margin:6px 0; }
-      .end-actions{ display:flex; justify-content:center; margin-top:10px; }
-      .end-actions .stButton>button{
-        background:#111; color:#fff; border:1px solid #111;
-        border-radius:12px; padding:10px 22px; font-weight:800; font-size:18px;
-      }
-      .end-actions .stButton>button:hover{ filter:brightness(1.06); }
-    </style>
-    """, unsafe_allow_html=True)
+    # ניצור placeholder לכל התוכן של המסך הזה
+    ph = st.empty()
+    with ph.container():
+        # CSS ממוקד למסך הזה
+        st.markdown("""
+        <style>
+          .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
+          .end-title{ font-size:clamp(26px,3vw,36px); font-weight:800; margin-bottom:8px; }
+          .end-sub{ font-size:clamp(18px,2.2vw,22px); margin:12px 0 18px; }
+          .end-list{ text-align:right; margin:0 auto 18px; padding:0 20px; }
+          .end-list li{ margin:6px 0; }
+          .end-actions{ display:flex; justify-content:center; margin-top:10px; }
+          .end-actions .stButton>button{
+            background:#111; color:#fff; border:1px solid #111;
+            border-radius:12px; padding:10px 22px; font-weight:800; font-size:18px;
+          }
+          .end-actions .stButton>button:hover{ filter:brightness(1.06); }
+        </style>
+        """, unsafe_allow_html=True)
 
-    # --- ה-HTML עם הערך הדינמי באמצעות f-string בלבד ---
-    timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
+        timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
 
-    st.markdown(f"""
-    <div class="end-wrap">
-      <div class="end-title">התרגול הסתיים 🎉</div>
-      <div class="end-sub">לפני שממשיכים לניסוי האמיתי, קראו בקצרה את ההנחיות:</div>
-      <ul class="end-list">
-        <li>כל שאלה מוגבלת ל־<b>{timeout}</b> שניות.</li>
-        <li>בחרו את האות <b>A–E</b> של העמודה המתאימה.</li>
-        <li>ענו במהירות – אין אפשרות לחזור אחורה.</li>
-      </ul>
-    </div>
-    """, unsafe_allow_html=True)
+        # התוכן
+        st.markdown(f"""
+        <div class="end-wrap">
+          <div class="end-title">התרגול הסתיים 🎉</div>
+          <div class="end-sub">לפני שממשיכים לניסוי האמיתי, קראו בקצרה את ההנחיות:</div>
+          <ul class="end-list">
+            <li>כל שאלה מוגבלת ל־<b>{timeout}</b> שניות.</li>
+            <li>בחרו את האות <b>A–E</b> של העמודה המתאימה.</li>
+            <li>ענו במהירות – אין אפשרות לחזור אחורה.</li>
+          </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # כפתור ההמשך
-    mid = st.columns([1,6,1])[1]
-    def on_start():
-        st.session_state.page = "trial"
-        st.session_state.t_start = None
-        st.session_state.awaiting_response = False
-        st.session_state.last_feedback_html = ""
-    with mid:
-        st.markdown('<div class="end-actions">', unsafe_allow_html=True)
-        st.button(" מתחילים ▶︎ ", on_click=on_start)
-        st.markdown('</div>', unsafe_allow_html=True)
+        # כפתור מעבר – מרוקנים את ה-placeholder לפני שינוי ה-state
+        def start_and_clear():
+            ph.empty()  # מסיר את כל המסך הזה מיד
+            st.session_state.page = "trial"
+            st.session_state.t_start = None
+            st.session_state.awaiting_response = False
+            st.session_state.last_feedback_html = ""
+
+        mid = st.columns([1,6,1])[1]
+        with mid:
+            st.markdown('<div class="end-actions">', unsafe_allow_html=True)
+            st.button(" מתחילים ▶︎ ", key="start_trials_btn", on_click=start_and_clear)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def screen_trial():
     total = len(st.session_state.trials)
