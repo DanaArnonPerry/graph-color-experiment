@@ -122,7 +122,7 @@ div[data-testid="stProgressBar"] progress {
 /* track */
 div[data-testid="stProgress"] progress::-webkit-progress-bar,
 div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
-  background-color: #e5e7eb !important;
+  background-color: #000000 !important;
   border-radius: 9999px;
 }
 /* fill */
@@ -141,7 +141,7 @@ div[data-testid="stProgressBar"] progress::-moz-progress-bar {
 /* ── OLDER: div-based progressbar (fallback) ───────────────── */
 div[data-testid="stProgress"] div[role="progressbar"],
 div[data-testid="stProgressBar"] div[role="progressbar"] {
-  background-color: #e5e7eb !important;      /* track */
+  background-color: #000000 !important;      /* track */
   background-image: none !important;
   border-radius: 9999px !important;
 }
