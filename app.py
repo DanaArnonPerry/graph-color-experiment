@@ -377,8 +377,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     if title_html:  # הדפס רק אם יש טקסט
         st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
-    ...
-
+    
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
