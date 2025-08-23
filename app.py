@@ -82,32 +82,6 @@ st.markdown(
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-st.markdown("""
-<style>
-/* מצמצם רווח אופקי בין עמודות בכל שורת st.columns */
-[data-testid="stHorizontalBlock"]{
-  gap: 6px !important;        /* שנה ל-4 / 2 / 0 לפי הרצוי */
-  column-gap: 6px !important;
-  row-gap: 0 !important;      /* שלא יווצר רווח אנכי בין רכיבים באותה שורה */
-}
-
-/* מבטל את ה-margin התחתון של כל כפתור (הרווח האנכי מתחת לכפתור) */
-div.stButton { 
-  margin: 0 !important; 
-}
-
-/* מצמצם padding פנימי של כל עמודת כפתור – עוד קצת הידוק */
-[data-testid="column"]{
-  padding-left: 2px !important;
-  padding-right: 2px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-
-
-
 /* אפס מרווחים סביב גרף */
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
