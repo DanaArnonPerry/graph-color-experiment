@@ -650,8 +650,9 @@ def screen_trial():
     _render_progress(i, total, label=f"גרף {i+1}/{total}")
 
     t = st.session_state.trials[i]
-    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>גרף מספר {i+1} מתוך {total}</div>"
-    _render_graph_block(title_html, t["QuestionText"], t)
+        
+    _render_graph_block("", t["QuestionText"], t)
+
 
     def finish_with(resp_key, rt_sec, correct):
         st.session_state.results.append({
