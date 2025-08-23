@@ -103,6 +103,43 @@ footer {visibility: hidden;}
     unsafe_allow_html=True,
 )
 
+st.markdown("""
+<style>
+/* צבעי סרגל ההתקדמות (תאימות לגרסאות שונות של Streamlit) */
+
+/* מסילת הרקע */
+div[data-testid="stProgress"] > div > div,
+div[data-testid="stProgressBar"] div[role="progressbar"] {
+  background-color: #e5e7eb;  /* track */
+}
+
+/* המילוי (החלק שזז) */
+div[data-testid="stProgress"] > div > div > div,
+div[data-testid="stProgressBar"] div[role="progressbar"] > div {
+  background-color: #22c55e;  /* fill – למשל ירוק */
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* צבעי סרגל ההתקדמות (תאימות לגרסאות שונות של Streamlit) */
+
+/* מסילת הרקע */
+div[data-testid="stProgress"] > div > div,
+div[data-testid="stProgressBar"] div[role="progressbar"] {
+  background-color: #e5e7eb;  /* track */
+}
+
+/* המילוי (החלק שזז) */
+div[data-testid="stProgress"] > div > div > div,
+div[data-testid="stProgressBar"] div[role="progressbar"] > div {
+  background-color: #22c55e;  /* fill – למשל ירוק */
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # ========= Session State =========
 
 def _admin_ui_enabled() -> bool:
