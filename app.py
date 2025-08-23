@@ -178,6 +178,24 @@ div[data-testid="stProgressBar"]{
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+:root{
+  --graph-top: 28px;
+  --buttons-up: -18px;
+  --question-top: 8px;      /* כמה להוריד/להעלות את השאלה */
+  --question-bottom: 12px;  /* רווח מתחת לשאלה */
+}
+.question-text{
+  text-align: center !important;               /* מרכז אופקית */
+  margin-top: var(--question-top) !important;  /* הזזה אנכית */
+  margin-bottom: var(--question-bottom) !important;
+  font-weight: 800;                             /* אופציונלי – דומה ל-### */
+  font-size: clamp(22px, 3vw, 36px);            /* אופציונלי */
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ========= Session State =========
 
 def _admin_ui_enabled() -> bool:
