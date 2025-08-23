@@ -200,7 +200,7 @@ st.markdown("""
 st.markdown("""
 <style>
 :root{
-  --buttons-gap: -20px;   /* המרווח המדויק בין הכפתורים */
+  --buttons-gap: -50px;   /* המרווח המדויק בין הכפתורים */
 }
 .choice-wrap [data-testid="stHorizontalBlock"]{
   gap: var(--buttons-gap) !important;
