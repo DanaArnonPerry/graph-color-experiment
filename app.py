@@ -134,7 +134,7 @@ div[data-testid="stProgressBar"] div[role="progressbar"] {
 /* המילוי (החלק שזז) */
 div[data-testid="stProgress"] > div > div > div,
 div[data-testid="stProgressBar"] div[role="progressbar"] > div {
-  background-color: #22c55e;  /* fill – למשל ירוק */
+  background-color: #000000;  /* fill – למשל ירוק */
 }
 </style>
 """, unsafe_allow_html=True)
