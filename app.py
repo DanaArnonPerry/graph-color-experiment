@@ -106,54 +106,44 @@ footer {visibility: hidden;}
 
 st.markdown("""
 <style>
-/* ===== Progress bar colors – work with both DOM variants ===== */
+/* ===== Progress bar: black fill, grey track (new + old DOM) ===== */
 
-/* ── NEWER: <progress> element ─────────────────────────────── */
+/* NEWER: <progress> element */
 div[data-testid="stProgress"] progress,
 div[data-testid="stProgressBar"] progress {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 12px;
-  border: none;
-  background: transparent;            /* נבטל רקע דיפולט */
+  appearance: none; -webkit-appearance: none;
+  width: 100%; height: 12px; border: none; background: transparent;
+  accent-color: #000 !important;              /* צבע המילוי (תקני) */
 }
-
-/* track */
+/* WebKit track & fill */
 div[data-testid="stProgress"] progress::-webkit-progress-bar,
 div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
-  background-color: #000000 !important;
+  background-color: #e5e7eb !important;       /* צבע המסילה */
   border-radius: 9999px;
 }
-/* fill */
 div[data-testid="stProgress"] progress::-webkit-progress-value,
 div[data-testid="stProgressBar"] progress::-webkit-progress-value {
-  background-color: #000000 !important;   /* ← הצבע החדש */
+  background-color: #000 !important;          /* מילוי שחור */
   border-radius: 9999px;
 }
-/* Firefox */
+/* Firefox fill */
 div[data-testid="stProgress"] progress::-moz-progress-bar,
 div[data-testid="stProgressBar"] progress::-moz-progress-bar {
-  background-color: #000000 !important;
+  background-color: #000 !important;
   border-radius: 9999px;
 }
 
-/* ── OLDER: div-based progressbar (fallback) ───────────────── */
-div[data-testid="stProgress"] div[role="progressbar"],
-div[data-testid="stProgressBar"] div[role="progressbar"] {
-  background-color: #000000 !important;      /* track */
-  background-image: none !important;
-  border-radius: 9999px !important;
+/* OLDER: div-based progressbar (כמו בשרשור) */
+.stProgress > div > div > div {               /* המסילה */
+  background-color: #e5e7eb !important;
 }
-div[data-testid="stProgress"] div[role="progressbar"] > div,
-div[data-testid="stProgressBar"] div[role="progressbar"] > div {
-  background-color: #000000 !important;      /* fill */
-  background-image: none !important;
-  border-radius: 9999px !important;
+.stProgress > div > div > div > div {         /* המילוי */
+  background-color: #000 !important;
 }
 
-/* אופציונלי: לוודא שהטוקן של התמה לא יכתיב כחול */
-:root { --primary-color: #000000; --primaryColor: #000000; }
+/* fallback כללי ישן */
+div[data-testid="stProgress"] div[role="progressbar"]        { background-color: #e5e7eb !important; border-radius: 9999px !important; }
+div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color: #000 !important;     border-radius: 9999px !important; }
 </style>
 """, unsafe_allow_html=True)
 
