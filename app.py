@@ -200,7 +200,7 @@ st.markdown("""
 st.markdown("""
 <style>
 :root{
-  --buttons-gap: 16px;  /* המרווח המדויק בין הכפתורים */
+  --buttons-gap: 14px;  /* המרווח המדויק בין הכפתורים */
 }
 
 /* מכוון את ה-grid של st.columns שבתוך העטיפה */
