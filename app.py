@@ -1,4 +1,4 @@
-# app.py
+תבדוק האם הקוד הזה תקין או שיש בו שגיאות? # app.py
 import os
 import time
 import random
@@ -59,18 +59,18 @@ st.markdown(
 html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* אפס רווח מתחת לגרף */
+/* אפס מרווחים סביב גרף */
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
-/* בלוק קומפקטי שמונע גלילה אנכית */
-section.main > div.block-container {
-  padding-top: .6rem;
-  padding-bottom: .6rem;
+/* קומפקטיות – פחות רווחים כדי למנוע גלילה */
+section.main > div.block-container { 
+  padding-top: 0.5rem; 
+  padding-bottom: 0.5rem; 
   max-height: 100vh;
   overflow: hidden;
 }
-.element-container { margin-bottom: .35rem !important; }
-h3 { font-size: 1.1rem !important; margin-bottom: .2rem !important; }
+.element-container { margin-bottom: 0.3rem !important; }
+h3 { font-size: 1.1rem !important; margin-bottom: 0.2rem !important; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -82,39 +82,6 @@ h3 { font-size: 1.1rem !important; margin-bottom: .2rem !important; }
 
 /* פסי רווח תחתונים מיותרים */
 footer {visibility: hidden;}
-
-/* כפתורי A–E בסגנון "שקף": ממורכזים וצמודים לגרף */
-.choice-wrap {
-  display: flex; justify-content: center;
-  gap: clamp(12px, 2vw, 24px);
-  margin-top: -14px;   /* מצמיד לכותרת הציר X של הגרף */
-  margin-bottom: 8px;
-}
-.choice-wrap .stButton>button {
-  width: clamp(74px, 8vw, 112px);
-  height: clamp(58px, 6.5vw, 84px);
-  border-radius: 14px;
-  background: #e5e7eb;
-  border: 2px solid #9ca3af;
-  font-weight: 900;
-  font-size: clamp(18px, 2.6vw, 28px);
-  color: #111;
-  box-shadow: 0 2px 4px rgba(0,0,0,.10);
-  padding: 0;
-  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
-}
-.choice-wrap .stButton>button:hover { filter: brightness(1.03); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.14); }
-.choice-wrap .stButton>button:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
-
-/* משוב מתחת לכפתורים, ממורכז */
-.feedback {
-  text-align: center; font-weight: 700; margin-top: 4px; margin-bottom: 6px;
-}
-.feedback.ok { color: #0a7f2e; }
-.feedback.err { color: #b91c1c; }
-
-/* כפתור "המשך" בתרגול */
-.center { display: flex; justify-content: center; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -356,8 +323,8 @@ def _render_graph_block(title_html, question_text, row_dict):
     ))
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
-        margin=dict(l=20, r=20, t=10, b=2),   # צמוד למטה
-        height=420,                            # גובה מאוזן שמונע גלילה
+        margin=dict(l=20, r=20, t=6, b=0),
+        height=280,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
@@ -369,12 +336,51 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# ---------- בחירות A–E ממורכזות ----------
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    outer_cols = st.columns([1,6,1])
-    with outer_cols[1]:
+    st.markdown("""
+    <style>
+    .choice-wrap { 
+        display: flex; 
+        justify-content: space-evenly;
+        margin-top: -25px;
+        margin-bottom: 5px;
+        width: 100%;
+    }
+    .choice-wrap .stButton>button {
+        width: 60px;
+        height: 40px;
+        border-radius: 8px;
+        background: #e5e7eb;
+        border: 2px solid #9ca3af;
+        font-weight: 800;
+        font-size: 16px;
+        color: #111;
+        box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        padding: 0;
+        transition: all 0.2s ease;
+    }
+    .choice-wrap .stButton>button:hover { 
+        background: #d1d5db;
+        border-color: #6b7280;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,.15);
+    }
+    .choice-wrap .stButton>button:active {
+        transform: translateY(0px);
+        box-shadow: 0 1px 2px rgba(0,0,0,.1);
+    }
+    .choice-wrap > div {
+        display: flex;
+        justify-content: center;
+        flex: 1;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    left, mid, right = st.columns([1,6,1])
+    with mid:
         st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
-        cols = st.columns(len(letters), gap="small")
+        cols = st.columns(len(letters))
         for L, c in zip(letters, cols):
             with c:
                 if st.button(L, key=f"{key_prefix}_btn_{L}"):
@@ -391,31 +397,26 @@ def _safe_rerun():
             pass
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים; ריענון עדין לעדכון הטיימר."""
+    """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
     if not st.session_state.get("awaiting_response", False):
         return
 
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
 
-    # טיימר קבוע למעלה
     st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
 
-    # אם הזמן נגמר – סוגרים את ה-trial (לא מתוך callback)
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout()
         _safe_rerun()
         return
 
-    # מפתח ייחודי לכפתורים
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
     key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
-    # הצגת הכפתורים
     render_choice_buttons(key_prefix, on_press)
 
-    # רענון עדין לטיימר
     if st.session_state.get("awaiting_response", False):
         time.sleep(1)
         _safe_rerun()
@@ -483,8 +484,11 @@ def _practice_one(idx: int):
         st.session_state.awaiting_response = True
         st.session_state.last_feedback_html = ""
     t = st.session_state.practice_list[idx]
-    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
+    title_html = f"<div style='font-size:20px; font-weight:700; text-align:right; margin-bottom:0.5rem;'>תרגול {idx+1} / {len(st.session_state.practice_list)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
+
+    if st.session_state.last_feedback_html:
+        st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
 
     def on_timeout():
         st.session_state.t_start = None
@@ -501,33 +505,28 @@ def _practice_one(idx: int):
         if chosen == correct_letter:
             st.session_state.awaiting_response = False
             st.session_state.last_feedback_html = (
-                f"<div class='feedback ok'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
+                f"<div style='text-align:center; margin:10px 0; font-weight:700;'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
             )
         else:
             st.session_state.awaiting_response = True
             st.session_state.last_feedback_html = (
-                "<div class='feedback err'>❌ לא מדויק – נסה/י שוב.</div>"
+                "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
         _safe_rerun()
 
-    # מציג את הטיימר + הכפתורים
-    _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
-
-    # המשוב – מתחת לכפתורים (כמו בשקפים)
-    if st.session_state.last_feedback_html:
-        st.markdown(st.session_state.last_feedback_html, unsafe_allow_html=True)
-
-    # כפתור "המשך" רק לאחר תשובה נכונה
-    if not st.session_state.awaiting_response:
+    if st.session_state.awaiting_response:
+        _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
+    else:
         center = st.columns([1,6,1])[1]
+        def on_next():
+            st.session_state.t_start = None
+            st.session_state.last_feedback_html = ""
+            if st.session_state.practice_idx + 1 < len(st.session_state.practice_list):
+                st.session_state.practice_idx += 1
+            else:
+                st.session_state.page = "practice_end"
         with center:
-            st.button("המשך", key=f"practice_next_{idx}", on_click=lambda: (
-                st.session_state.update({"t_start": None, "last_feedback_html": ""}),
-                st.session_state.__setitem__("practice_idx",
-                    st.session_state.practice_idx + 1 if st.session_state.practice_idx + 1 < len(st.session_state.practice_list) else st.session_state.practice_idx),
-                st.session_state.__setitem__("page",
-                    "practice" if st.session_state.practice_idx + 1 < len(st.session_state.practice_list) else "practice_end")
-            ))
+            st.button("המשך", key=f"practice_next_{idx}", on_click=on_next)
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
@@ -536,11 +535,11 @@ def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
     st.markdown(
-        "<div style='text-align:center; font-size:28px; font-weight:800; margin:32px 0;'>התרגול הסתיים</div>",
+        "<div style='text-align:center; font-size:28px; font-weight:800; margin:32px 0;'>התרגיל הסתיים</div>",
         unsafe_allow_html=True
     )
     st.markdown(
-        "<div style='text-align:center; font-size:20px; font-weight:600; margin-bottom:24px;'>להתחלת הניסוי יש ללחוץ על <u>התחל</u></div>",
+        "<div style='text-align:center; font-size:20px; font-weight:600; margin-bottom:24px;'>לחץ על <u>התחל</u> כדי להמשיך</div>",
         unsafe_allow_html=True
     )
     mid = st.columns([1,6,1])[1]
@@ -559,7 +558,9 @@ def screen_trial():
 
     i = st.session_state.i
     t = st.session_state.trials[i]
-    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0;'>גרף {i+1} / {len(st.session_state.trials)}</div>"
+    
+    # תיקון: הפרדת השורות והחלפת המילה "תרגול" ל"שאלה"
+    title_html = f"<div style='font-size:16px; font-weight:700; text-align:right; margin:0; padding:0;'>שאלה {i+1} / {len(st.session_state.trials)}</div>"
     _render_graph_block(title_html, t["QuestionText"], t)
 
     def finish_with(resp_key, rt_sec, correct):
@@ -590,7 +591,7 @@ def screen_trial():
         chosen = key.strip().upper()
         is_correct = (chosen == correct_letter)
         finish_with(resp_key=chosen, rt_sec=rt, correct=is_correct)
-        # אין כאן rerun; המעבר לשאלה הבאה יגרום לרענון
+        _safe_rerun()
 
     _radio_answer_and_timer(TRIAL_TIMEOUT_SEC, on_timeout, on_press)
 
