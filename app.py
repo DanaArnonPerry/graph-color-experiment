@@ -475,7 +475,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_layout(
         margin=dict(l=20, r=20, t=18, b=0),
-        height=400,
+        height=320,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
