@@ -528,12 +528,11 @@ def _render_graph_block(title_html, question_text, row_dict):
 # ---------- שורת כפתורים ממורכזת A–E ----------
 
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    st.markdown(
-        """
+    st.markdown("""
     <style>
-    .choice-wrap { 
-        display:flex; justify-content:center; 
-        gap: clamp(10px,1.6vw,22px); 
+    .choice-wrap {
+        display:flex; justify-content:center;
+        gap: clamp(10px,1.6vw,22px);
         margin-top: var(--buttons-up);
     }
     .choice-wrap .stButton>button {
@@ -554,13 +553,15 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
 
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
-        st.markdown('<div class="choice-wrap">', unsafe_allow_html=True)
-        cols = st.columns(len(letters), gap="small")
+        # >>> העטיפה עם מזהה ייחודי
+        st.markdown('<div id="buttons-row" class="choice-wrap">', unsafe_allow_html=True)
+        cols = st.columns(len(letters), gap="small")  # ה-CSS יעקוף את ה-gap הזה
         for L, c in zip(letters, cols):
             with c:
                 if st.button(L, key=f"{key_prefix}_btn_{L}"):
                     on_press(L)
         st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 def _safe_rerun():
