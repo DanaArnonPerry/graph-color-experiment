@@ -200,13 +200,17 @@ st.markdown("""
 st.markdown("""
 <style>
 :root{
-  --buttons-gap: -50px;   /* המרווח המדויק בין הכפתורים */
+  --buttons-gap: 16px;  /* המרווח המדויק בין הכפתורים */
 }
-.choice-wrap [data-testid="stHorizontalBlock"]{
+
+/* מכוון את ה-grid של st.columns שבתוך העטיפה */
+#buttons-row [data-testid="stHorizontalBlock"]{
   gap: var(--buttons-gap) !important;
+  column-gap: var(--buttons-gap) !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ========= Session State =========
