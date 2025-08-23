@@ -147,6 +147,22 @@ div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color:
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+:root{
+  --graph-top: 28px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
+  --buttons-up: -18px; /* כמה להרים את הכפתורים (שלילי=למעלה, חיובי=למטה) */
+}
+
+/* הזזת הגרף למטה/למעלה */
+div[data-testid="stPlotlyChart"], .stPlotlyChart{
+  margin-top: var(--graph-top) !important;
+}
+
+/* קירוב שורת הכפתורים לגרף */
+.choice-wrap{ margin-top: var(--buttons-up) !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ========= Session State =========
 
