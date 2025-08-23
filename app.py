@@ -192,6 +192,7 @@ st.markdown("""
   margin-bottom: var(--question-bottom) !important;
   font-weight: 800;                             /* אופציונלי – דומה ל-### */
   font-size: clamp(22px, 3vw, 36px);            /* אופציונלי */
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
 }
 </style>
 """, unsafe_allow_html=True)
