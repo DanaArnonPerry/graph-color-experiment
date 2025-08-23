@@ -470,7 +470,11 @@ def _render_graph_block(title_html, question_text, row_dict):
     if title_html:  # הדפס רק אם יש טקסט
         st.markdown(title_html, unsafe_allow_html=True)
     st.markdown(f"### {question_text}")
-    
+    # במקום: st.markdown(f"### {question_text}")
+    left, mid, right = st.columns([1,6,1])
+    with mid:
+    st.markdown(f"<div class='question-text'>{question_text}</div>", unsafe_allow_html=True)
+  
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
