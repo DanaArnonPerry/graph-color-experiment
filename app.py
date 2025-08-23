@@ -211,6 +211,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+/* מצמצם את המרווח בין העמודות בשורה שיש בה כפתורי Streamlit */
+div[data-testid="stHorizontalBlock"]:has(> div [data-testid="stButton"]) {
+  gap: 6px !important;            /* <<< שנהי לכמה שרוצים */
+}
+
+/* מצמצם גם את הפאדינג הפנימי של כל עמודה בשורה הזו */
+div[data-testid="stHorizontalBlock"]:has(> div [data-testid="stButton"])
+  > div[data-testid="column"]{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ========= Session State =========
