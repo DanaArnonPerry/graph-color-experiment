@@ -469,7 +469,7 @@ def _render_progress(current_index: int, total: int, label: str = ""):
 def _render_graph_block(title_html, question_text, row_dict):
     if title_html:  # הדפס רק אם יש טקסט
         st.markdown(title_html, unsafe_allow_html=True)
-        left, mid, right = st.columns([1,6,1])
+    left, mid, right = st.columns([1,6,1])
     with mid:
         st.markdown(f"<div class='question-text'>{question_text}</div>", unsafe_allow_html=True)
   
