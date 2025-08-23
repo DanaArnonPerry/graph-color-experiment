@@ -107,12 +107,12 @@ st.markdown("""
 /* track */
 div[data-testid="stProgress"] > div > div,
 div[data-testid="stProgressBar"] div[role="progressbar"] {
-  background-color: #e5e7eb;
+  background-color: #000000;
 }
 /* fill */
 div[data-testid="stProgress"] > div > div > div,
 div[data-testid="stProgressBar"] div[role="progressbar"] > div {
-  background-color: #22c55e !important;  /* החליפי לצבע הרצוי */
+  background-color: #D9D9D9 !important;  /* החליפי לצבע הרצוי */
 }
 </style>
 """, unsafe_allow_html=True)
