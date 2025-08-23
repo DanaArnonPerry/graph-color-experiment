@@ -117,7 +117,7 @@ div[data-testid="stProgressBar"] div[role="progressbar"] {
 /* המילוי (החלק שזז) */
 div[data-testid="stProgress"] div[role="progressbar"] > div,
 div[data-testid="stProgressBar"] div[role="progressbar"] > div {
-  background: ##000000 !important;           /* FILL – החליפי לצבע הרצוי */
+  background: #000000 !important;           /* FILL – החליפי לצבע הרצוי */
   background-image: none !important;         /* מבטל גרדיאנט כחול בחלק מהגרסאות */
 }
 
