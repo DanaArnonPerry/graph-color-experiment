@@ -182,7 +182,7 @@ div[data-testid="stProgressBar"]{
 st.markdown("""
 <style>
 :root{
-  --graph-top: -30px;
+  --graph-top: -40px;
   --buttons-up: -200px;
   --question-top: -120px;      /* כמה להוריד/להעלות את השאלה */
   --question-bottom: 0px;  /* רווח מתחת לשאלה */
