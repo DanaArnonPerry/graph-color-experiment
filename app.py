@@ -97,7 +97,12 @@ section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
 }
 
 /* פסי רווח תחתונים מיותרים */
-footer {visibility: hidden;}
+footer{
+  display: none !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
