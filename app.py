@@ -184,7 +184,7 @@ st.markdown("""
 :root{
   --graph-top: -20px;
   --buttons-up: -80px;
-  --question-top: -120px;      /* כמה להוריד/להעלות את השאלה */
+  --question-top: -80px;      /* כמה להוריד/להעלות את השאלה */
   --question-bottom: 4px;  /* רווח מתחת לשאלה */
 }
 .question-text{
