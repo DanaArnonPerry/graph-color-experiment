@@ -79,7 +79,7 @@ st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפ�
 st.markdown(
     """
 <style>
-html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
+html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif;}
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* אפס מרווחים סביב גרף */
