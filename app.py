@@ -775,20 +775,25 @@ def _practice_one(idx: int):
             st.session_state.practice_idx += 1
         else:
             st.session_state.page = "practice_end"
-
+   
     def on_press(key):
         correct_letter = str(t["QCorrectAnswer"]).strip().upper()
         chosen = key.strip().upper()
         phrase = _correct_phrase(t.get("QuestionText", ""))
+    
         if chosen == correct_letter:
             st.session_state.awaiting_response = False
             st.session_state.last_feedback_html = (
                 f"<div style='text-align:center; margin:10px 0; font-weight:700;'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
             )
+            _safe_rerun()  # נכון – מציג ישר את מסך ה"צדקת" והכפתור "המשך"
         else:
+            st.session_state.awaiting_response = True
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
+            # חשוב: לא קוראים כאן ל-_safe_rerun(); הטיימר ירענן פעם בשנייה לבד.
+      
         _safe_rerun()
 
     if st.session_state.awaiting_response:
