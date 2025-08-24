@@ -171,9 +171,10 @@ st.markdown("""
 div[data-testid="stProgress"],
 div[data-testid="stProgressBar"]{
   position: sticky;
-  top: 48px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
+  top: 32px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
   z-index: 100;       /* נמוך מהטיימר (9999) */
-  margin-top: -160px;    /* ריווח קטן מהרכיב שמעל */
+  margin-top: -140px;    /* ריווח קטן מהרכיב שמעל */
+  margin-bottom: 8px; /* הוסף רווח תחתון קטן */
 }
 </style>
 """, unsafe_allow_html=True)
