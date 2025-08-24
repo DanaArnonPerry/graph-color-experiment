@@ -680,6 +680,20 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
 # ========= Screens =========
 
 def screen_welcome():
+    # בדיקות קיימות (נשארות זהות)
+    if not os.path.exists(DATA_PATH):
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
+    try:
+        df = load_data()
+    except Exception as e:
+        st.error(str(e)); st.stop()
+    total_rows = len(df)
+    if total_rows < 2:
+        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
+
+    # <<< עטיפה שמפעילה את הצמצום למסך הזה בלבד
+    st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)
+
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
@@ -697,20 +711,10 @@ def screen_welcome():
 כדי להתחיל – לחצו על **המשך לתרגול**.
 """
     )
-    if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
-    try:
-        df = load_data()
-    except Exception as e:
-        st.error(str(e)); st.stop()
-    total_rows = len(df)
-    if total_rows < 2:
-        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
 
-    # עדכון טקסט לפי פרמטרים דינמיים
+    # (הטקסטים הדינמיים / אזהרות נשארים כמו אצלך)
     if st.session_state.timeout_sec != TRIAL_TIMEOUT_DEFAULT or st.session_state.n_trials_req != N_TRIALS_DEFAULT:
         st.info(f"הרצה זו תוגדר עם {st.session_state.n_trials_req} שאלות וזמן {st.session_state.timeout_sec} שניות לשאלה (ע\"י פרמטרי כתובת URL).")
-
     if total_rows < 2 + st.session_state.n_trials_req:
         st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום {st.session_state.n_trials_req}. נריץ את הקיים.")
 
@@ -732,6 +736,10 @@ def screen_welcome():
         st.session_state.page = "practice"
 
     st.button("המשך לתרגול", on_click=on_start)
+
+    # סגירת העטיפה
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 def _practice_one(idx: int):
