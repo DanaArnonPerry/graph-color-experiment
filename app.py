@@ -299,32 +299,6 @@ section.main > div.block-container { padding-top: 6px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-/* מרים את מסך ה-Welcome בלבד */
-section.main > div.block-container:has(#welcome-wrap){
-  margin-top: -260px !important;   /* כווני: -140 / -180 לפי הטעם */
-  padding-top: 6px !important;
-}
-
-/* אופציונלי: מרים גם את "סיום התרגול" */
-section.main > div.block-container:has(#practice-end-wrap){
-  margin-top: -180px !important;
-  padding-top: 6px !important;
-}
-
-/* מובייל – הזזה עדינה יותר */
-@media (max-width: 680px){
-  section.main > div.block-container:has(#welcome-wrap){ margin-top: -90px !important; }
-  section.main > div.block-container:has(#practice-end-wrap){ margin-top: -100px !important; }
-}
-
-/* גימור קטן: מוריד טיפה את מרווח ה-H1 במסך ה-Welcome */
-#welcome-wrap h1{ margin-top: 0 !important; }
-</style>
-""", unsafe_allow_html=True)
-
-
 
 # ========= Session State =========
 
