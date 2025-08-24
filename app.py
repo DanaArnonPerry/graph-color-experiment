@@ -1,4 +1,4 @@
-# app.py
+    # app.py
 import os
 import time
 import random
@@ -181,10 +181,10 @@ div[data-testid="stProgressBar"]{
 st.markdown("""
 <style>
 :root{
-  --graph-top: 10px;
-  --buttons-up: -100px;
-  --question-top: -100px;      /* כמה להוריד/להעלות את השאלה */
-  --question-bottom: 8px;  /* רווח מתחת לשאלה */
+  --graph-top: -20px;
+  --buttons-up: -80px;
+  --question-top: -120px;      /* כמה להוריד/להעלות את השאלה */
+  --question-bottom: 4px;  /* רווח מתחת לשאלה */
 }
 .question-text{
   text-align: center !important;               /* מרכז אופקית */
