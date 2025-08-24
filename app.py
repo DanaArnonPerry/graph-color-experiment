@@ -303,7 +303,7 @@ st.markdown("""
 <style>
 /* מרים את מסך ה-Welcome בלבד */
 section.main > div.block-container:has(#welcome-wrap){
-  margin-top: -160px !important;   /* כווני: -140 / -180 לפי הטעם */
+  margin-top: -260px !important;   /* כווני: -140 / -180 לפי הטעם */
   padding-top: 6px !important;
 }
 
