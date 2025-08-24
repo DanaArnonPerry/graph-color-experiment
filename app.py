@@ -591,8 +591,8 @@ def _render_graph_block(title_html, question_text, row_dict):
         tickangle=0,       # אופציונלי: סיבוב התוויות
     )
     fig.update_layout(
-        margin=dict(l=20, r=20, t=18, b=0),
-        height=320,
+        margin=dict(l=15, r=15, t=10, b=0),
+        height=280,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
