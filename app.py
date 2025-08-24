@@ -586,61 +586,41 @@ def _render_graph_block(title_html, question_text, row_dict):
 # ---------- שורת כפתורים ממורכזת A–E ----------
 
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    # עיצוב רדיואים כ"גלויות" עגולות, בשורה אחת ובמרכז (גם במובייל)
     st.markdown("""
     <style>
-      /* עוטף ספציפי לרכיב הרדיואים שלנו */
-      #choices-radio [role="radiogroup"]{
-        display:flex !important;
-        flex-wrap: nowrap !important;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: clamp(8px, 2vw, 16px) !important;
-        overflow-x: auto;          /* אם מסך קטן מאוד - גלילה אופקית */
-        padding: 6px 2px;
+    .choice-wrap {
+        display:flex; justify-content:center;
+        gap: clamp(10px,1.6vw,22px);
         margin-top: var(--buttons-up);
-      }
-      /* הופך כל אופציה ל"כפתור" עגול */
-      #choices-radio [role="radiogroup"] > label{
-        display:flex !important;
-        align-items:center; justify-content:center;
-        min-width: clamp(44px, 6vw, 60px);
-        height: clamp(44px, 6vw, 60px);
+    }
+    .choice-wrap .stButton>button {
+        width: clamp(44px, 6vw, 64px);
+        height: clamp(44px, 6vw, 64px);
         border-radius: 9999px;
-        border: 1.5px solid #9ca3af;
         background: #e5e7eb;
+        border: 1.5px solid #9ca3af;
         font-weight: 800;
         font-size: clamp(16px, 2.2vw, 20px);
         color: #111;
-        user-select: none;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      /* מצב נבחר – הדגשה קלה */
-      #choices-radio [aria-checked="true"]{
-        border-color: #111 !important;
-        background: #d1d5db !important;
-      }
-      /* מסתיר את הנקודה של הרדיו – משאירים רק את התווית */
-      #choices-radio [role="radio"] { display:none !important; }
+        box-shadow: 0 1px 0 rgba(0,0,0,.08);
+        padding: 0;
+    }
+    .choice-wrap .stButton>button:hover { filter: brightness(1.05); }
     </style>
     """, unsafe_allow_html=True)
 
-    # מרכז למסך
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
-        st.markdown('<div id="choices-radio">', unsafe_allow_html=True)
-        choice = st.radio(
-            label=" ", options=list(letters),
-            horizontal=True,                # ← הופך את זה לשורה אחת
-            index=None,                     # אין בחירה מוקדמת
-            label_visibility="collapsed",
-            key=f"{key_prefix}_radio",
-        )
+        # >>> העטיפה עם מזהה ייחודי
+        st.markdown('<div id="buttons-row" class="choice-wrap">', unsafe_allow_html=True)
+        cols = st.columns(len(letters), gap="small")  # ה-CSS יעקוף את ה-gap הזה
+        for L, c in zip(letters, cols):
+            with c:
+                if st.button(L, key=f"{key_prefix}_btn_{L}"):
+                    on_press(L)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        if choice:
-            on_press(choice)
+
 
 def _safe_rerun():
     try:
