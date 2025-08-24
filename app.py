@@ -203,8 +203,9 @@ st.markdown("""
   --buttons-gap: 6px;  /* המרווח המדויק בין הכפתורים */
 }
 
-/* מכוון את ה-grid של st.columns שבתוך העטיפה */
-#buttons-row [data-testid="stHorizontalBlock"]{
+/* ה-st.columns שנוצר מיד אחרי #buttons-row */
+#buttons-row + div[data-testid="stHorizontalBlock"],
+#buttons-row ~ div[data-testid="stHorizontalBlock"]{
   gap: var(--buttons-gap) !important;
   column-gap: var(--buttons-gap) !important;
 }
