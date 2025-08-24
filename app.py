@@ -232,29 +232,36 @@ st.markdown("""
 st.markdown("""
 <style>
 /* --- Mobile fix: keep A–E buttons in one horizontal row --- */
-@media (max-width: 600px){
-  /* הפיכת ה-grid של st.columns לשורת Flex */
-  #buttons-row [data-testid="stHorizontalBlock"]{
+@media (max-width: 680px){
+  /* להפוך את ה-grid של st.columns לשורת Flex */
+  #buttons-row + div[data-testid="stHorizontalBlock"],
+  #buttons-row ~ div[data-testid="stHorizontalBlock"]{
     display: flex !important;
     flex-wrap: nowrap !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 8px !important;            /* המרווח בין הכפתורים במובייל */
+    gap: 8px !important;           /* מרווח בין הכפתורים במובייל */
+    overflow-x: auto;              /* למקרה של מסכים צרים במיוחד */
   }
-  /* ביטול התפרסות כל "עמודה" לרוחב מלא */
-  #buttons-row [data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+
+  /* למנוע מה"עמודות" לתפוס רוחב מלא */
+  #buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+  #buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
     flex: 0 0 auto !important;
     width: auto !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
-  /* כיווץ קל של הכפתורים במובייל כדי שייכנסו בשורה אחת */
-  #buttons-row .stButton>button{
+
+  /* מידות כפתורים מותאמות מובייל */
+  #buttons-row + div[data-testid="stHorizontalBlock"] .stButton>button,
+  #buttons-row ~ div[data-testid="stHorizontalBlock"] .stButton>button{
     width: 44px !important;
     height: 44px !important;
     font-size: 18px !important;
   }
 }
+
 </style>
 """, unsafe_allow_html=True)
 
