@@ -266,6 +266,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+st.markdown("""
+<style>
+/* ===== גודל, מרווח ופונט של כפתורי ה-radio ===== */
+:root{
+  --choice-size: 60px;     /* קוטר הכפתור (גובה+רוחב) */
+  --choice-font: 22px;     /* גודל האות בתוך הכפתור */
+  --choice-gap: 16px;      /* מרווח בין הכפתורים */
+  --choice-paddingY: 6px;  /* רווח אנכי מסביב לשורה */
+}
+
+/* ערכים ייעודיים למובייל (אפשר לכוונן) */
+@media (max-width: 680px){
+  :root{
+    --choice-size: 48px;
+    --choice-font: 18px;
+    --choice-gap: 10px;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 
 # ========= Session State =========
 
