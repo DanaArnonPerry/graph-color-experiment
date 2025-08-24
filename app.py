@@ -150,7 +150,7 @@ div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color:
 st.markdown("""
 <style>
 :root{
-  --graph-top: 50px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
+  --graph-top: 100px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
   --buttons-up: -18px; /* כמה להרים את הכפתורים (שלילי=למעלה, חיובי=למטה) */
 }
 
