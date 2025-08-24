@@ -270,18 +270,18 @@ st.markdown("""
 <style>
 /* ===== גודל, מרווח ופונט של כפתורי ה-radio ===== */
 :root{
-  --choice-size: 120px !important;     /* קוטר הכפתור (גובה+רוחב) */
-  --choice-font: 36px !important;     /* גודל האות בתוך הכפתור */
-  --choice-gap: 24px !important;      /* מרווח בין הכפתורים */
-  --choice-paddingY: 6px;  /* רווח אנכי מסביב לשורה */
+  --choice-size: 100px !important;     /* קוטר הכפתור (גובה+רוחב) */
+  --choice-font: 32px !important;     /* גודל האות בתוך הכפתור */
+  --choice-gap: 18px !important;      /* מרווח בין הכפתורים */
+  --choice-paddingY: 4px;  /* רווח אנכי מסביב לשורה */
 }
 
 /* ערכים ייעודיים למובייל (אפשר לכוונן) */
 @media (max-width: 680px){
   :root{
-    --choice-size: 48px;
-    --choice-font: 18px;
-    --choice-gap: 10px;
+    --choice-size: 44px;
+    --choice-font: 16px;
+    --choice-gap: 8px;
   }
 }
 </style>
