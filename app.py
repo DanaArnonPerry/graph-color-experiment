@@ -1,4 +1,4 @@
-    # app.py
+# app.py
 import os
 import time
 import random
@@ -75,41 +75,7 @@ LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", 
-                   page_icon="📊", 
-                   layout="centered",
-                    menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
-)
-# --- Hide Streamlit chrome (decoration/header/toolbar) safely ---
-st.markdown("""
-<style>
-/* gradient bar up top */
-div[data-testid="stDecoration"] { display: none !important; }
-
-/* top header + cloud toolbar (icons: ⋮, GitHub, ✎, ⭐, Share) */
-header[data-testid="stHeader"] { display: none !important; }
-div[data-testid="stToolbar"] { display: none !important; }
-
-/* legacy fallback */
-#MainMenu { visibility: hidden !important; }
-</style>
-""", unsafe_allow_html=True)
-
-# Fallback: if Streamlit re-injects them dynamically, hide again.
-components.html("""
-<script>
-(function(){
-  const hide = () => {
-    document.querySelectorAll(
-      '[data-testid="stDecoration"], header[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu'
-    ).forEach(el => { el.style.display='none'; el.style.visibility='hidden'; });
-  };
-  hide();
-  new MutationObserver(hide).observe(document.documentElement, {subtree:true, childList:true});
-})();
-</script>
-""", height=0)
-
+st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
 st.markdown(
     """
 <style>
@@ -207,7 +173,7 @@ div[data-testid="stProgressBar"]{
   position: sticky;
   top: 10px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
   z-index: 20;       /* נמוך מהטיימר (9999) */
-  margin-top: --200px;    /* ריווח קטן מהרכיב שמעל */
+  margin-top: -180px;    /* ריווח קטן מהרכיב שמעל */
   margin-bottom: 8px; /* הוסף רווח תחתון קטן */
 }
 </style>
@@ -322,23 +288,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Compact the vertical space under the fixed timer (safe override) ---
 st.markdown("""
 <style>
-/* מזיז למעלה את השאלה, הגרף ושורת הכפתורים דרך המשתנים שכבר בשימוש */
-:root{
-  --question-top: -160px !important;   /* היה -120px */
-  --graph-top: -70px !important;       /* היה -40px */
-  --buttons-up: -220px !important;     /* היה -200px */
-}
+/* מסתיר את כותרת העל והטולבר של סטרימליט (כולל ב-Cloud) */
+header[data-testid="stHeader"] { display: none; }
+div[data-testid="stToolbar"] { display: none; }
 
-/* מצמיד את פס ההתקדמות ממש מתחת לטיימר הקבוע */
-div[data-testid="stProgress"],
-div[data-testid="stProgressBar"]{
-  top: 6px !important;                 /* טיפה מתחת לטיימר */
-  margin-top: -240px !important;       /* מעלה את הפס ואת כל המקטע שאחריו */
-  margin-bottom: 8px !important;
-}
+/* ריווח קטן מלמעלה כדי להצמיד את התוכן לקצה */
+section.main > div.block-container { padding-top: 6px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -901,78 +858,7 @@ def _practice_one(idx: int):
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
-# ↓↓↓ חדש: CSS ממוקד למסך הזה בלבד
-    st.markdown("""
-    <style>
-      /* מושך את כל בלוק "התרגול הסתיים" למעלה בלבד */
-      #practice-end-wrap{
-        margin-top: -140px !important;      /* אפשר לכוונן: -120 / -160 */
-        /* מאפס משתנים גלובליים כדי שלא יזיזו תוכן במסך הזה */
-        --graph-top: 0px; 
-        --buttons-up: 0px; 
-        --question-top: 0px; 
-        --question-bottom: 0px;
-      }
-      @media (max-width: 680px){
-        #practice-end-wrap{ margin-top: -80px !important; }
-      }
-    </style>
-    """, unsafe_allow_html=True)
-    # ↑↑↑ סוף התוספת
 
-    # ניצור placeholder לכל התוכן של המסך הזה
-    ph = st.empty()
-    with ph.container():
-        # ↓↓↓ חדש: פותחים עטיפה למסך הזה
-        st.markdown('<div id="practice-end-wrap">', unsafe_allow_html=True)
-
-        # CSS קיים למסך
-        st.markdown("""
-        <style>
-          .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
-          .end-title{ font-size:clamp(26px,3vw,36px); font-weight:800; margin-bottom:8px; }
-          .end-sub{ font-size:clamp(18px,2.2vw,22px); margin:12px 0 18px; }
-          .end-list{ text-align:right; margin:0 auto 18px; padding:0 20px; }
-          .end-list li{ margin:6px 0; }
-          .end-actions{ display:flex; justify-content:center; margin-top:10px; }
-          .end-actions .stButton>button{
-            background:#111; color:#fff; border:1px solid #111;
-            border-radius:12px; padding:10px 22px; font-weight:800; font-size:18px;
-          }
-          .end-actions .stButton>button:hover{ filter:brightness(1.06); }
-        </style>
-        """, unsafe_allow_html=True)
-
-        timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
-
-        # התוכן (כפי שהיה)
-        st.markdown(f"""
-        <div class="end-wrap">
-          <div class="end-title">התרגול הסתיים 🎉</div>
-          <div class="end-sub">לפני שממשיכים לניסוי האמיתי, קראו בקצרה את ההנחיות:</div>
-          <ul class="end-list">
-            <li>כל שאלה מוגבלת ל־<b>{timeout}</b> שניות.</li>
-            <li>בחרו את האות <b>A–E</b> של העמודה המתאימה.</li>
-            <li>ענו במהירות – אין אפשרות לחזור אחורה.</li>
-          </ul>
-        </div>
-        """, unsafe_allow_html=True)
-
-        def start_and_clear():
-            ph.empty()
-            st.session_state.page = "trial"
-            st.session_state.t_start = None
-            st.session_state.awaiting_response = False
-            st.session_state.last_feedback_html = ""
-
-        mid = st.columns([1,6,1])[1]
-        with mid:
-            st.markdown('<div class="end-actions">', unsafe_allow_html=True)
-            st.button(" מתחילים ▶︎ ", key="start_trials_btn", on_click=start_and_clear)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # ↑↑↑ חדש: סוגרים את העטיפה
-        st.markdown('</div>', unsafe_allow_html=True)
 
 def screen_practice_end():
     st.session_state.awaiting_response = False
