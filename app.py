@@ -185,7 +185,7 @@ st.markdown("""
   --graph-top: -20px;
   --buttons-up: -80px;
   --question-top: -80px;      /* כמה להוריד/להעלות את השאלה */
-  --question-bottom: 4px;  /* רווח מתחת לשאלה */
+  --question-bottom: 6px;  /* רווח מתחת לשאלה */
 }
 .question-text{
   text-align: center !important;               /* מרכז אופקית */
