@@ -322,6 +322,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- Compact the vertical space under the fixed timer (safe override) ---
+st.markdown("""
+<style>
+/* מזיז למעלה את השאלה, הגרף ושורת הכפתורים דרך המשתנים שכבר בשימוש */
+:root{
+  --question-top: -160px !important;   /* היה -120px */
+  --graph-top: -70px !important;       /* היה -40px */
+  --buttons-up: -220px !important;     /* היה -200px */
+}
+
+/* מצמיד את פס ההתקדמות ממש מתחת לטיימר הקבוע */
+div[data-testid="stProgress"],
+div[data-testid="stProgressBar"]{
+  top: 6px !important;                 /* טיפה מתחת לטיימר */
+  margin-top: -240px !important;       /* מעלה את הפס ואת כל המקטע שאחריו */
+  margin-bottom: 8px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ========= Session State =========
