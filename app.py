@@ -182,6 +182,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+/* === רדיו A–E אופקי + שליטה בגודל/מרווח === */
+:root{ --radio-gap: 10px; --radio-scale: 1.15; }
+/* מסתירים כותרת ברירת מחדל של הווידג'ט */
+div[data-testid="stRadio"] > label{ display:none; }
+/* הופכים את קבוצת האפשרויות לשורה ממורכזת */
+div[data-testid="stRadio"] > div[role="radiogroup"]{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  justify-content:center !important;
+  align-items:center !important;
+  gap: var(--radio-gap) !important;
+}
+/* מבטלים מרווחי ברירת מחדל של כל אפשרות */
+div[data-testid="stRadio"] > div[role="radiogroup"] label{ margin:0 !important; }
+/* מגדילים מעט את עיגולי הבחירה */
+div[data-testid="stRadio"] input[type="radio"]{ transform: scale(var(--radio-scale)) !important; }
+@media (max-width: 600px){
+  div[data-testid="stRadio"] > div[role="radiogroup"]{ gap: 8px !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ========= Session State =========
 
 def _admin_ui_enabled() -> bool:
@@ -517,6 +541,32 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
             on_press(choice)
 
 
+def render_choice_radio(radio_key: str, on_press, options=("A","B","C","D","E")):
+    """Radio אופקי עם מנגנון 'ניקוי בחירה' לאחר טעות בתרגול."""
+    clear_flag = f"{radio_key}_clear"
+    # אם האפליקציה סימנה לנקות – מוחקים את המפתח כדי לאתחל ל-None
+    if st.session_state.get(clear_flag):
+        if radio_key in st.session_state:
+            del st.session_state[radio_key]
+        st.session_state[clear_flag] = False
+
+    def _on_change():
+        choice = st.session_state.get(radio_key)
+        if choice:
+            on_press(choice)
+
+    # מציגים רדיו אופקי, ללא תווית
+    st.radio(
+        "בחר/י תשובה",
+        options,
+        index=None,                      # מתחיל ללא בחירה
+        key=radio_key,
+        horizontal=True,                 # אופקי בכל רוחב
+        label_visibility="collapsed",
+        on_change=_on_change
+    )
+
+
 def _safe_rerun():
     try:
         st.rerun()
@@ -544,13 +594,13 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         _safe_rerun()
         return
 
-    # מפתח ייחודי לבחירה
+        # מפתח ייחודי ל-Radio
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
-    key_prefix = f"choice_{st.session_state.page}_{current_index}"
+    radio_key = f"radio_{st.session_state.page}_{current_index}"
 
-    # רכיב הבחירה
-    render_choice_buttons(key_prefix, on_press)
+    # בחירה אופקית במובייל ודסקטופ
+    render_choice_radio(radio_key, on_press)
 
     # רענון עדין פעם בשנייה לעדכון הטיימר
     if st.session_state.get("awaiting_response", False):
@@ -665,6 +715,9 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
+        # מנגנון ניקוי רדיו לאחר טעות בתרגול
+        radio_key = f"radio_{st.session_state.page}_{st.session_state.practice_idx}"
+        st.session_state[f"{radio_key}_clear"] = True
         _safe_rerun()
 
     if st.session_state.awaiting_response:
