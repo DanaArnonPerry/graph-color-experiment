@@ -173,7 +173,7 @@ div[data-testid="stProgressBar"]{
   position: sticky;
   top: 10px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
   z-index: 20;       /* נמוך מהטיימר (9999) */
-  margin-top: -10px;    /* ריווח קטן מהרכיב שמעל */
+  margin-top: -100px;    /* ריווח קטן מהרכיב שמעל */
   margin-bottom: 8px; /* הוסף רווח תחתון קטן */
 }
 </style>
