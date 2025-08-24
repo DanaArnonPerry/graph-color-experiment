@@ -183,7 +183,7 @@ st.markdown("""
 <style>
 :root{
   --graph-top: 10px;
-  --buttons-up: -80px;
+  --buttons-up: -40px;
   --question-top: -80px;      /* כמה להוריד/להעלות את השאלה */
   --question-bottom: 0px;  /* רווח מתחת לשאלה */
 }
