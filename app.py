@@ -75,27 +75,27 @@ LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(
-    page_title="ניסוי בזיכרון חזותי של גרפים",
-    page_icon="📊",
-    layout="centered",
-    menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
+st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", 
+                   page_icon="📊", 
+                   layout="centered",
+                    menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
 )
-
-# Hide Streamlit chrome (decoration/header/toolbar)
+# --- Hide Streamlit chrome (decoration/header/toolbar) safely ---
 st.markdown("""
 <style>
-/* פס הגרדיינט העליון */
+/* gradient bar up top */
 div[data-testid="stDecoration"] { display: none !important; }
-/* הכותרת העליונה והטולבר (⋮ / GitHub / ✎ / ⭐ / Share) */
+
+/* top header + cloud toolbar (icons: ⋮, GitHub, ✎, ⭐, Share) */
 header[data-testid="stHeader"] { display: none !important; }
 div[data-testid="stToolbar"] { display: none !important; }
-/* תאימות ישנה */
+
+/* legacy fallback */
 #MainMenu { visibility: hidden !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# Fallback קטן אם האלמנטים מוזרקים מחדש בדינמיות
+# Fallback: if Streamlit re-injects them dynamically, hide again.
 components.html("""
 <script>
 (function(){
@@ -105,22 +105,22 @@ components.html("""
     ).forEach(el => { el.style.display='none'; el.style.visibility='hidden'; });
   };
   hide();
-  new MutationObserver(hide).observe(document.documentElement,{subtree:true,childList:true});
+  new MutationObserver(hide).observe(document.documentElement, {subtree:true, childList:true});
 })();
 </script>
 """, height=0)
 
-# בסיס עיצובי כללי + RTL + טיימר
-st.markdown("""
+st.markdown(
+    """
 <style>
-html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
+html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif;}
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* אפס מרווחים סביב גרף */
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
-/* קומפקטיות כללית */
-section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-height: 100vh; }
+/* קומפקטיות – פחות רווחים כדי למנוע גלילה */
+section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-height: 100vh;}
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -130,61 +130,188 @@ section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-
   font-weight: 800; font-size: 14px; letter-spacing: .5px;
 }
 
-/* הסתרת footer */
-footer { visibility: hidden; }
+/* פסי רווח תחתונים מיותרים */
+footer {visibility: hidden;}
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# Progress bar — צבעים ותאימות (חדש+ישן) + מיקום מתחת לטיימר
+
 st.markdown("""
 <style>
-/* צבעים – חדש/ישן */
+/* ===== Progress bar: black fill, grey track (new + old DOM) ===== */
+
+/* NEWER: <progress> element */
 div[data-testid="stProgress"] progress,
 div[data-testid="stProgressBar"] progress {
   appearance: none; -webkit-appearance: none;
   width: 100%; height: 12px; border: none; background: transparent;
-  accent-color: #000 !important;
+  accent-color: #000 !important;              /* צבע המילוי (תקני) */
 }
+/* WebKit track & fill */
 div[data-testid="stProgress"] progress::-webkit-progress-bar,
-div[data-testid="stProgressBar"] progress::-webkit-progress-bar { background-color: #e5e7eb !important; border-radius: 9999px; }
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
+  background-color: #e5e7eb !important;       /* צבע המסילה */
+  border-radius: 9999px;
+}
 div[data-testid="stProgress"] progress::-webkit-progress-value,
-div[data-testid="stProgressBar"] progress::-webkit-progress-value { background-color: #000 !important; border-radius: 9999px; }
+div[data-testid="stProgressBar"] progress::-webkit-progress-value {
+  background-color: #000 !important;          /* מילוי שחור */
+  border-radius: 9999px;
+}
+/* Firefox fill */
 div[data-testid="stProgress"] progress::-moz-progress-bar,
-div[data-testid="stProgressBar"] progress::-moz-progress-bar { background-color: #000 !important; border-radius: 9999px; }
+div[data-testid="stProgressBar"] progress::-moz-progress-bar {
+  background-color: #000 !important;
+  border-radius: 9999px;
+}
 
-/* תאימות ישנה div-based */
-.stProgress > div > div > div { background-color: #e5e7eb !important; }
-.stProgress > div > div > div > div { background-color: #000 !important; }
+/* OLDER: div-based progressbar (כמו בשרשור) */
+.stProgress > div > div > div {               /* המסילה */
+  background-color: #e5e7eb !important;
+}
+.stProgress > div > div > div > div {         /* המילוי */
+  background-color: #000 !important;
+}
 
-/* מיקום מתחת לטיימר הקבוע */
+/* fallback כללי ישן */
+div[data-testid="stProgress"] div[role="progressbar"]        { background-color: #e5e7eb !important; border-radius: 9999px !important; }
+div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color: #000 !important;     border-radius: 9999px !important; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+:root{
+  --graph-top: 100px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
+  --buttons-up: -20px; /* כמה להרים את הכפתורים (שלילי=למעלה, חיובי=למטה) */
+}
+
+/* הזזת הגרף למטה/למעלה */
+div[data-testid="stPlotlyChart"], .stPlotlyChart{
+  margin-top: var(--graph-top) !important;
+}
+
+/* קירוב שורת הכפתורים לגרף */
+.choice-wrap{ margin-top: var(--buttons-up) !important; }
+</style>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+<style>
+/* מצמיד את סרגל ההתקדמות מתחת לטיימר הקבוע */
 div[data-testid="stProgress"],
 div[data-testid="stProgressBar"]{
   position: sticky;
-  top: 6px !important;      /* מתחת לטיימר */
-  z-index: 20;
-  margin-top: -240px !important;  /* מקרב את הפס והתוכן שאחריו למעלה */
-  margin-bottom: 8px !important;
+  top: 10px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
+  z-index: 20;       /* נמוך מהטיימר (9999) */
+  margin-top: --200px;    /* ריווח קטן מהרכיב שמעל */
+  margin-bottom: 8px; /* הוסף רווח תחתון קטן */
 }
 </style>
 """, unsafe_allow_html=True)
 
-# משתנים ומחלקות פעילות – גרף, שאלה, כפתורי A–E (איחוד ל-:root אחד)
 st.markdown("""
 <style>
 :root{
-  /* קומפקטיות אנכית – הערכים הסופיים */
-  --question-top: -160px !important;    /* היה -120px */
-  --graph-top: -70px !important;        /* היה -40px */
-  --buttons-up: -220px !important;      /* היה -200px */
+  --graph-top: -40px;
+  --buttons-up: -200px;
+  --question-top: -120px;      /* כמה להוריד/להעלות את השאלה */
+  --question-bottom: 0px;  /* רווח מתחת לשאלה */
+}
+.question-text{
+  text-align: center !important;               /* מרכז אופקית */
+  margin-top: var(--question-top) !important;  /* הזזה אנכית */
+  margin-bottom: var(--question-bottom) !important;
+  font-weight: 800;                             /* אופציונלי – דומה ל-### */
+  font-size: clamp(20px, 2.8vw, 26px);            /* אופציונלי */
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-  /* גדלי בחירות A–E */
-  --choice-size: 130px !important;
-  --choice-font: 40px !important;
-  --choice-gap: 22px !important;
-  --choice-paddingY: 4px;
+st.markdown("""
+<style>
+:root{
+  --buttons-gap: 6px;  /* המרווח המדויק בין הכפתורים */
 }
 
-/* במובייל – מידות מתונות יותר */
+/* ה-st.columns שנוצר מיד אחרי #buttons-row */
+#buttons-row + div[data-testid="stHorizontalBlock"],
+#buttons-row ~ div[data-testid="stHorizontalBlock"]{
+  gap: var(--buttons-gap) !important;
+  column-gap: var(--buttons-gap) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* צמצום רווחים ושוליים בשורת הכפתורים – ללא :has */
+#buttons-row + div[data-testid="stHorizontalBlock"],
+#buttons-row ~ div[data-testid="stHorizontalBlock"]{
+  gap: 2px !important;            /* שנהי אם תרצי */
+}
+
+#buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+#buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* --- Mobile fix: keep A–E buttons in one horizontal row --- */
+@media (max-width: 680px){
+  /* להפוך את ה-grid של st.columns לשורת Flex */
+  #buttons-row + div[data-testid="stHorizontalBlock"],
+  #buttons-row ~ div[data-testid="stHorizontalBlock"]{
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;           /* מרווח בין הכפתורים במובייל */
+    overflow-x: auto;              /* למקרה של מסכים צרים במיוחד */
+  }
+
+  /* למנוע מה"עמודות" לתפוס רוחב מלא */
+  #buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+  #buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* מידות כפתורים מותאמות מובייל */
+  #buttons-row + div[data-testid="stHorizontalBlock"] .stButton>button,
+  #buttons-row ~ div[data-testid="stHorizontalBlock"] .stButton>button{
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 18px !important;
+  }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+<style>
+/* ===== גודל, מרווח ופונט של כפתורי ה-radio ===== */
+:root{
+  --choice-size: 130px !important;     /* קוטר הכפתור (גובה+רוחב) */
+  --choice-font: 40px !important;     /* גודל האות בתוך הכפתור */
+  --choice-gap: 22px !important;      /* מרווח בין הכפתורים */
+  --choice-paddingY: 4px;  /* רווח אנכי מסביב לשורה */
+}
+
+/* ערכים ייעודיים למובייל (אפשר לכוונן) */
 @media (max-width: 680px){
   :root{
     --choice-size: 44px;
@@ -192,20 +319,25 @@ st.markdown("""
     --choice-gap: 8px;
   }
 }
+</style>
+""", unsafe_allow_html=True)
 
-/* הזזת השאלה */
-.question-text{
-  text-align: center !important;
-  margin-top: var(--question-top) !important;
-  margin-bottom: 0 !important;
-  font-weight: 800;
-  font-size: clamp(20px, 2.8vw, 26px);
-  font-family: 'Rubik','Segoe UI',Arial,sans-serif !important;
+# --- Compact the vertical space under the fixed timer (safe override) ---
+st.markdown("""
+<style>
+/* מזיז למעלה את השאלה, הגרף ושורת הכפתורים דרך המשתנים שכבר בשימוש */
+:root{
+  --question-top: -160px !important;   /* היה -120px */
+  --graph-top: -70px !important;       /* היה -40px */
+  --buttons-up: -220px !important;     /* היה -200px */
 }
 
-/* הזזת הגרף */
-div[data-testid="stPlotlyChart"], .stPlotlyChart{
-  margin-top: var(--graph-top) !important;
+/* מצמיד את פס ההתקדמות ממש מתחת לטיימר הקבוע */
+div[data-testid="stProgress"],
+div[data-testid="stProgressBar"]{
+  top: 6px !important;                 /* טיפה מתחת לטיימר */
+  margin-top: -240px !important;       /* מעלה את הפס ואת כל המקטע שאחריו */
+  margin-bottom: 8px !important;
 }
 </style>
 """, unsafe_allow_html=True)
