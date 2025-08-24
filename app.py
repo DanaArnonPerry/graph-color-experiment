@@ -786,7 +786,6 @@ def _practice_one(idx: int):
                 f"<div style='text-align:center; margin:10px 0; font-weight:700;'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
             )
         else:
-            st.session_state.awaiting_response = True
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
