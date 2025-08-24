@@ -1,4 +1,3 @@
-# app.py
 import os
 import time
 import random
@@ -103,108 +102,129 @@ footer {visibility: hidden;}
     unsafe_allow_html=True,
 )
 
-# ===== Progress bar: black fill & sticky position =====
+
 st.markdown("""
 <style>
-/* צבעים */
+/* ===== Progress bar: black fill, grey track (new + old DOM) ===== */
+
+/* NEWER: <progress> element */
 div[data-testid="stProgress"] progress,
 div[data-testid="stProgressBar"] progress {
   appearance: none; -webkit-appearance: none;
   width: 100%; height: 12px; border: none; background: transparent;
-  accent-color: #000 !important;
+  accent-color: #000 !important;              /* צבע המילוי (תקני) */
 }
+/* WebKit track & fill */
 div[data-testid="stProgress"] progress::-webkit-progress-bar,
-div[data-testid="stProgressBar"] progress::-webkit-progress-bar { background-color: #e5e7eb !important; border-radius: 9999px; }
-div[data-testid="stProgress"] progress::-webkit-progress-value,
-div[data-testid="stProgressBar"] progress::-webkit-progress-value { background-color: #000 !important; border-radius: 9999px; }
-div[data-testid="stProgress"] progress::-moz-progress-bar,
-div[data-testid="stProgressBar"] progress::-moz-progress-bar { background-color: #000 !important; border-radius: 9999px; }
-/* דום ישן */
-.stProgress > div > div > div { background-color: #e5e7eb !important; }
-.stProgress > div > div > div > div { background-color: #000 !important; }
-
-/* מיקום דביק מתחת לטיימר */
-div[data-testid="stProgress"],
-div[data-testid="stProgressBar"]{
-  position: sticky; top: 48px; z-index: 100; margin-top: -100px;
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
+  background-color: #e5e7eb !important;       /* צבע המסילה */
+  border-radius: 9999px;
 }
+div[data-testid="stProgress"] progress::-webkit-progress-value,
+div[data-testid="stProgressBar"] progress::-webkit-progress-value {
+  background-color: #000 !important;          /* מילוי שחור */
+  border-radius: 9999px;
+}
+/* Firefox fill */
+div[data-testid="stProgress"] progress::-moz-progress-bar,
+div[data-testid="stProgressBar"] progress::-moz-progress-bar {
+  background-color: #000 !important;
+  border-radius: 9999px;
+}
+
+/* OLDER: div-based progressbar (כמו בשרשור) */
+.stProgress > div > div > div {               /* המסילה */
+  background-color: #e5e7eb !important;
+}
+.stProgress > div > div > div > div {         /* המילוי */
+  background-color: #000 !important;
+}
+
+/* fallback כללי ישן */
+div[data-testid="stProgress"] div[role="progressbar"]        { background-color: #e5e7eb !important; border-radius: 9999px !important; }
+div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color: #000 !important;     border-radius: 9999px !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== Layout variables & question style =====
 st.markdown("""
 <style>
 :root{
-  --graph-top: 28px;      /* כמה להוריד את הגרף */
-  --buttons-up: -18px;    /* כמה להרים את שורת הבחירה */
-  --question-top: 8px;    /* הזזת השאלה */
-  --question-bottom: 12px;/* רווח מתחת לשאלה */
+  --graph-top: 28px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
+  --buttons-up: -18px; /* כמה להרים את הכפתורים (שלילי=למעלה, חיובי=למטה) */
 }
-/* שאלה ממורכזת */
+
+/* הזזת הגרף למטה/למעלה */
+div[data-testid="stPlotlyChart"], .stPlotlyChart{
+  margin-top: var(--graph-top) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+<style>
+/* מצמיד את סרגל ההתקדמות מתחת לטיימר הקבוע */
+div[data-testid="stProgress"],
+div[data-testid="stProgressBar"]{
+  position: sticky;
+  top: 48px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
+  z-index: 100;       /* נמוך מהטיימר (9999) */
+  margin-top: -100px;    /* ריווח קטן מהרכיב שמעל */
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+:root{
+  --graph-top: 28px;
+  --buttons-up: -18px;
+  --question-top: 8px;      /* כמה להוריד/להעלות את השאלה */
+  --question-bottom: 12px;  /* רווח מתחת לשאלה */
+}
 .question-text{
-  text-align: center !important;
-  margin-top: var(--question-top) !important;
+  text-align: center !important;               /* מרכז אופקית */
+  margin-top: var(--question-top) !important;  /* הזזה אנכית */
   margin-bottom: var(--question-bottom) !important;
-  font-weight: 800;
-  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 800;                             /* אופציונלי – דומה ל-### */
+  font-size: clamp(22px, 3vw, 28px);            /* אופציונלי */
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
 }
-/* הזזת הגרף */
-div[data-testid="stPlotlyChart"], .stPlotlyChart{ margin-top: var(--graph-top) !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== Radio row styling (desktop + mobile) =====
-st.markdown("""
-<style>
-/* עטיפה */
-#choices-radio{ display:flex; justify-content:center; margin-top: var(--buttons-up); }
-/* קבוצה אופקית בדסקטופ */
-#choices-radio [role="radiogroup"]{
-  display:flex !important; flex-wrap: nowrap !important;
-  justify-content:center !important; align-items:center !important;
-  gap: clamp(8px, 2vw, 14px) !important;
-}
-#choices-radio [role="radiogroup"] > label{
-  min-width: clamp(42px, 6vw, 64px);
-  height: clamp(42px, 6vw, 64px);
-  padding: 0 10px; border-radius: 9999px;
-  display:flex; align-items:center; justify-content:center;
-  font-weight:800; font-size: clamp(16px, 2.2vw, 20px);
-}
-/* מובייל – נשאר אופקי, נכנס בשורה אחת */
-@media (max-width: 600px){
-  #choices-radio [role="radiogroup"]{ gap: 8px !important; }
-  #choices-radio [role="radiogroup"] > label{
-    min-width: 44px; height: 44px; font-size: 18px;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
+# ===== A–E: horizontal RADIO bar =====
+st.markdown(
+    """
+    <style>
+      /* עוטפים את ה-radio בשורת כפתורים אופקית ניתנת לגלילה קלה במובייל */
+      #choices-radio{ display:flex; justify-content:center; margin-top:var(--buttons-up); }
+      #choices-radio .stRadio{ width:auto; }
+      #choices-radio [data-baseweb=\"radio\"]{ display:flex; gap: clamp(8px, 2vw, 16px); }
 
-st.markdown("""
-<style>
-/* === רדיו A–E אופקי + שליטה בגודל/מרווח === */
-:root{ --radio-gap: 10px; --radio-scale: 1.15; }
-/* מסתירים כותרת ברירת מחדל של הווידג'ט */
-div[data-testid="stRadio"] > label{ display:none; }
-/* הופכים את קבוצת האפשרויות לשורה ממורכזת */
-div[data-testid="stRadio"] > div[role="radiogroup"]{
-  display:flex !important;
-  flex-wrap:nowrap !important;
-  justify-content:center !important;
-  align-items:center !important;
-  gap: var(--radio-gap) !important;
-}
-/* מבטלים מרווחי ברירת מחדל של כל אפשרות */
-div[data-testid="stRadio"] > div[role="radiogroup"] label{ margin:0 !important; }
-/* מגדילים מעט את עיגולי הבחירה */
-div[data-testid="stRadio"] input[type="radio"]{ transform: scale(var(--radio-scale)) !important; }
-@media (max-width: 600px){
-  div[data-testid="stRadio"] > div[role="radiogroup"]{ gap: 8px !important; }
-}
-</style>
-""", unsafe_allow_html=True)
+      /* כפתור/תגית של כל אפשרות */
+      #choices-radio label{ 
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width: 44px; min-height: 44px; padding: 6px 12px;
+        border: 1.5px solid #9ca3af; border-radius: 9999px; 
+        font-weight:800; font-size: clamp(16px, 2.2vw, 20px);
+        background:#e5e7eb; color:#111; user-select:none; cursor:pointer;
+      }
+      #choices-radio input[type=\"radio\"]{ display:none; }
+      #choices-radio input[type=\"radio\"]:checked + div > div > label{
+        background:#111; color:#fff; border-color:#111;
+      }
+
+      /* מובייל: ודא יישאר אופקי ולא יישבר */
+      @media (max-width: 600px){
+        #choices-radio [data-baseweb=\"radio\"]{ flex-wrap: nowrap; overflow-x:auto; }
+        #choices-radio label{ min-width: 42px; min-height: 42px; font-size:18px; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # ========= Session State =========
 
@@ -505,7 +525,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     fig.update_traces(textfont=dict(size=20, color="#111"))
     fig.update_xaxes(
         tickfont=dict(size=18, color="#111111", family="Rubik, Segoe UI, Arial"),
-        tickangle=0,
+        tickangle=0,       # אופציונלי: סיבוב התוויות
     )
     fig.update_layout(
         margin=dict(l=20, r=20, t=18, b=0),
@@ -522,49 +542,24 @@ def _render_graph_block(title_html, question_text, row_dict):
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
 
-# ---------- אופציות A–E כ-radiobutton אופקי ----------
+# ---------- שורת אפשרויות A–E עם RADIO אופקי ----------
 
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
+    # מזהה ייחודי כדי שהרדיו לא יזכור בחירות קודמות בין סשנים/שאלות
+    radio_key = f"{key_prefix}_radio"
+
+    # עוטפים ב-containers כדי למרכז
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
-        st.markdown("<div id=\"choices-radio\">", unsafe_allow_html=True)
+        st.markdown('<div id="choices-radio">', unsafe_allow_html=True)
         choice = st.radio(
-            label="בחר/י תשובה",            # לא ריק – מונע אזהרת נגישות
-            options=list(letters),
-            horizontal=True,
-            index=None,                       # אין בחירה התחלתית
-            label_visibility="collapsed",     # מוסתר ובלי אזהרה
-            key=f"{key_prefix}_radio",
+            "בחר/י את העמודה:", options=list(letters), index=None, horizontal=True, key=radio_key
         )
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
         if choice is not None:
             on_press(choice)
 
-
-def render_choice_radio(radio_key: str, on_press, options=("A","B","C","D","E")):
-    """Radio אופקי עם מנגנון 'ניקוי בחירה' לאחר טעות בתרגול."""
-    clear_flag = f"{radio_key}_clear"
-    # אם האפליקציה סימנה לנקות – מוחקים את המפתח כדי לאתחל ל-None
-    if st.session_state.get(clear_flag):
-        if radio_key in st.session_state:
-            del st.session_state[radio_key]
-        st.session_state[clear_flag] = False
-
-    def _on_change():
-        choice = st.session_state.get(radio_key)
-        if choice:
-            on_press(choice)
-
-    # מציגים רדיו אופקי, ללא תווית
-    st.radio(
-        "בחר/י תשובה",
-        options,
-        index=None,                      # מתחיל ללא בחירה
-        key=radio_key,
-        horizontal=True,                 # אופקי בכל רוחב
-        label_visibility="collapsed",
-        on_change=_on_change
-    )
 
 
 def _safe_rerun():
@@ -578,7 +573,7 @@ def _safe_rerun():
 
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """הצגת טיימר עליון + בחירה A–E (radio) צמודה לגרף וממורכזת."""
+    """הצגת טיימר עליון + אפשרויות A–E כרדיו אופקי."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -594,13 +589,13 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         _safe_rerun()
         return
 
-        # מפתח ייחודי ל-Radio
+    # מפתח ייחודי
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
-    radio_key = f"radio_{st.session_state.page}_{current_index}"
+    key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
-    # בחירה אופקית במובייל ודסקטופ
-    render_choice_radio(radio_key, on_press)
+    # רדיו אופקי A–E
+    render_choice_buttons(key_prefix, on_press)
 
     # רענון עדין פעם בשנייה לעדכון הטיימר
     if st.session_state.get("awaiting_response", False):
@@ -715,9 +710,6 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 "<div style='text-align:center; margin:10px 0; font-weight:700;'>❌ לא מדויק – נסה/י שוב.</div>"
             )
-        # מנגנון ניקוי רדיו לאחר טעות בתרגול
-        radio_key = f"radio_{st.session_state.page}_{st.session_state.practice_idx}"
-        st.session_state[f"{radio_key}_clear"] = True
         _safe_rerun()
 
     if st.session_state.awaiting_response:
