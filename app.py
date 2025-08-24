@@ -617,37 +617,40 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
         flex-wrap: nowrap !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: var(--choice-gap) !important;   /* <<< מרווח בין הכפתורים */
+        gap: var(--choice-gap) !important;           /* מרווח בין הכפתורים */
         overflow-x: auto;
-        padding: var(--choice-paddingY) 2px; /* <<< ריווח סביב השורה */
-        margin-top: var(--buttons-up);
+        padding: var(--choice-paddingY) 2px !important; /* ריווח סביב השורה */
+        margin-top: var(--buttons-up) !important;
       }
-      /* הופך כל אופציה ל"כפתור" עגול */
+    
+      /* כל אופציה נראית ככפתור עגול */
       #choices-radio [role="radiogroup"] > label{
         display:flex !important;
         align-items:center; justify-content:center;
-        min-width: var(--choice-size);       /* <<< קוטר/רוחב */
-        height: var(--choice-size);          /* <<< קוטר/גובה */
-        border-radius: 9999px;
-        border: 1.5px solid #9ca3af;
-        background: #e5e7eb;
-        font-weight: 800;
-        font-size: var(--choice-font);       /* <<< גודל טקסט */
-        color: #111;
-        user-select: none;
+        width: var(--choice-size) !important;        /* <<< רוחב קבוע */
+        height: var(--choice-size) !important;       /* <<< גובה קבוע */
+        box-sizing: border-box !important;           /* גבולות נכנסים למידה */
+        border-radius: 9999px !important;
+        border: 1.5px solid #9ca3af !important;
+        background: #e5e7eb !important;
+        font-weight: 800 !important;
+        font-size: var(--choice-font) !important;    /* <<< גודל האות */
+        color: #111 !important;
+        user-select: none !important;
         padding: 0 !important;
         margin: 0 !important;
       }
+    
       /* מצב נבחר – הדגשה קלה */
       #choices-radio [aria-checked="true"]{
         border-color: #111 !important;
         background: #d1d5db !important;
       }
-      /* מסתיר את הנקודה של הרדיו – משאירים רק את התווית */
+    
+      /* מסתיר את נקודת הרדיו – נשארת רק התווית ה"עגולה" */
       #choices-radio [role="radio"] { display:none !important; }
     </style>
     """, unsafe_allow_html=True)
-
 
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
