@@ -110,10 +110,6 @@ components.html("""
 </script>
 """, height=0)
 
-
-
-
-
 st.markdown(
     """
 <style>
