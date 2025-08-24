@@ -270,9 +270,9 @@ st.markdown("""
 <style>
 /* ===== גודל, מרווח ופונט של כפתורי ה-radio ===== */
 :root{
-  --choice-size: 100px;     /* קוטר הכפתור (גובה+רוחב) */
-  --choice-font: 28px;     /* גודל האות בתוך הכפתור */
-  --choice-gap: 16px;      /* מרווח בין הכפתורים */
+  --choice-size: 120px !important;     /* קוטר הכפתור (גובה+רוחב) */
+  --choice-font: 36px !important;     /* גודל האות בתוך הכפתור */
+  --choice-gap: 24px !important;      /* מרווח בין הכפתורים */
   --choice-paddingY: 6px;  /* רווח אנכי מסביב לשורה */
 }
 
