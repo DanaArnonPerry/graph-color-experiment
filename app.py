@@ -743,6 +743,7 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
 # ========= Screens =========
 
 def screen_welcome():
+    st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)  # ← חדש
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
@@ -756,10 +757,12 @@ def screen_welcome():
 
 לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול.**
 
-
 כדי להתחיל – לחצו על **המשך לתרגול**.
 """
     )
+    st.markdown('</div>', unsafe_allow_html=True)  # ← חדש
+    ...
+
     if not os.path.exists(DATA_PATH):
         st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
     try:
