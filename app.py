@@ -75,7 +75,45 @@ LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
+st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", 
+                   page_icon="📊", 
+                   layout="centered"
+                    menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
+)
+# --- Hide Streamlit chrome (decoration/header/toolbar) safely ---
+st.markdown("""
+<style>
+/* gradient bar up top */
+div[data-testid="stDecoration"] { display: none !important; }
+
+/* top header + cloud toolbar (icons: ⋮, GitHub, ✎, ⭐, Share) */
+header[data-testid="stHeader"] { display: none !important; }
+div[data-testid="stToolbar"] { display: none !important; }
+
+/* legacy fallback */
+#MainMenu { visibility: hidden !important; }
+</style>
+""", unsafe_allow_html=True)
+
+# Fallback: if Streamlit re-injects them dynamically, hide again.
+components.html("""
+<script>
+(function(){
+  const hide = () => {
+    document.querySelectorAll(
+      '[data-testid="stDecoration"], header[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu'
+    ).forEach(el => { el.style.display='none'; el.style.visibility='hidden'; });
+  };
+  hide();
+  new MutationObserver(hide).observe(document.documentElement, {subtree:true, childList:true});
+})();
+</script>
+""", height=0)
+
+
+
+
+
 st.markdown(
     """
 <style>
