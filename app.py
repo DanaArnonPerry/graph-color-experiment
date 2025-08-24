@@ -630,13 +630,17 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
         st.markdown('<div id="choices-radio">', unsafe_allow_html=True)
+         
         choice = st.radio(
-            label=" ", options=list(letters),
-            horizontal=True,                # ← הופך את זה לשורה אחת
-            index=None,                     # אין בחירה מוקדמת
-            label_visibility="collapsed",
+            label="בחר/י תשובה",          # ← לא ריק (נשאר סמוי)
+            options=list(letters),
+            horizontal=True,
+            index=None,
+            label_visibility="collapsed",  # ← מסתיר את הכיתוב מה־UI
             key=f"{key_prefix}_radio",
         )
+
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
         if choice:
