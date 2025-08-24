@@ -1,4 +1,3 @@
-# app.py
 import os
 import time
 import random
@@ -158,9 +157,6 @@ st.markdown("""
 div[data-testid="stPlotlyChart"], .stPlotlyChart{
   margin-top: var(--graph-top) !important;
 }
-
-/* קירוב שורת הכפתורים לגרף */
-.choice-wrap{ margin-top: var(--buttons-up) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -197,74 +193,37 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-:root{
-  --buttons-gap: 6px;  /* המרווח המדויק בין הכפתורים */
-}
+# ===== A–E: horizontal RADIO bar =====
+st.markdown(
+    """
+    <style>
+      /* עוטפים את ה-radio בשורת כפתורים אופקית ניתנת לגלילה קלה במובייל */
+      #choices-radio{ display:flex; justify-content:center; margin-top:var(--buttons-up); }
+      #choices-radio .stRadio{ width:auto; }
+      #choices-radio [data-baseweb=\"radio\"]{ display:flex; gap: clamp(8px, 2vw, 16px); }
 
-/* ה-st.columns שנוצר מיד אחרי #buttons-row */
-#buttons-row + div[data-testid="stHorizontalBlock"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"]{
-  gap: var(--buttons-gap) !important;
-  column-gap: var(--buttons-gap) !important;
-}
-</style>
-""", unsafe_allow_html=True)
+      /* כפתור/תגית של כל אפשרות */
+      #choices-radio label{ 
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width: 44px; min-height: 44px; padding: 6px 12px;
+        border: 1.5px solid #9ca3af; border-radius: 9999px; 
+        font-weight:800; font-size: clamp(16px, 2.2vw, 20px);
+        background:#e5e7eb; color:#111; user-select:none; cursor:pointer;
+      }
+      #choices-radio input[type=\"radio\"]{ display:none; }
+      #choices-radio input[type=\"radio\"]:checked + div > div > label{
+        background:#111; color:#fff; border-color:#111;
+      }
 
-st.markdown("""
-<style>
-/* צמצום רווחים ושוליים בשורת הכפתורים – ללא :has */
-#buttons-row + div[data-testid="stHorizontalBlock"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"]{
-  gap: 2px !important;            /* שנהי אם תרצי */
-}
-
-#buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* --- Mobile fix: keep A–E buttons in one horizontal row --- */
-@media (max-width: 680px){
-  /* להפוך את ה-grid של st.columns לשורת Flex */
-  #buttons-row + div[data-testid="stHorizontalBlock"],
-  #buttons-row ~ div[data-testid="stHorizontalBlock"]{
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 8px !important;           /* מרווח בין הכפתורים במובייל */
-    overflow-x: auto;              /* למקרה של מסכים צרים במיוחד */
-  }
-
-  /* למנוע מה"עמודות" לתפוס רוחב מלא */
-  #buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-  #buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-    flex: 0 0 auto !important;
-    width: auto !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  /* מידות כפתורים מותאמות מובייל */
-  #buttons-row + div[data-testid="stHorizontalBlock"] .stButton>button,
-  #buttons-row ~ div[data-testid="stHorizontalBlock"] .stButton>button{
-    width: 44px !important;
-    height: 44px !important;
-    font-size: 18px !important;
-  }
-}
-
-</style>
-""", unsafe_allow_html=True)
-
+      /* מובייל: ודא יישאר אופקי ולא יישבר */
+      @media (max-width: 600px){
+        #choices-radio [data-baseweb=\"radio\"]{ flex-wrap: nowrap; overflow-x:auto; }
+        #choices-radio label{ min-width: 42px; min-height: 42px; font-size:18px; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # ========= Session State =========
@@ -583,64 +542,25 @@ def _render_graph_block(title_html, question_text, row_dict):
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
 
-# ---------- שורת כפתורים ממורכזת A–E ----------
+# ---------- שורת אפשרויות A–E עם RADIO אופקי ----------
 
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    # עיצוב רדיואים כ"גלויות" עגולות, בשורה אחת ובמרכז (גם במובייל)
-    st.markdown("""
-    <style>
-      /* עוטף ספציפי לרכיב הרדיואים שלנו */
-      #choices-radio [role="radiogroup"]{
-        display:flex !important;
-        flex-wrap: nowrap !important;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: clamp(8px, 2vw, 16px) !important;
-        overflow-x: auto;          /* אם מסך קטן מאוד - גלילה אופקית */
-        padding: 6px 2px;
-        margin-top: var(--buttons-up);
-      }
-      /* הופך כל אופציה ל"כפתור" עגול */
-      #choices-radio [role="radiogroup"] > label{
-        display:flex !important;
-        align-items:center; justify-content:center;
-        min-width: clamp(44px, 6vw, 60px);
-        height: clamp(44px, 6vw, 60px);
-        border-radius: 9999px;
-        border: 1.5px solid #9ca3af;
-        background: #e5e7eb;
-        font-weight: 800;
-        font-size: clamp(16px, 2.2vw, 20px);
-        color: #111;
-        user-select: none;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      /* מצב נבחר – הדגשה קלה */
-      #choices-radio [aria-checked="true"]{
-        border-color: #111 !important;
-        background: #d1d5db !important;
-      }
-      /* מסתיר את הנקודה של הרדיו – משאירים רק את התווית */
-      #choices-radio [role="radio"] { display:none !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    # מזהה ייחודי כדי שהרדיו לא יזכור בחירות קודמות בין סשנים/שאלות
+    radio_key = f"{key_prefix}_radio"
 
-    # מרכז למסך
+    # עוטפים ב-containers כדי למרכז
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
         st.markdown('<div id="choices-radio">', unsafe_allow_html=True)
         choice = st.radio(
-            label=" ", options=list(letters),
-            horizontal=True,                # ← הופך את זה לשורה אחת
-            index=None,                     # אין בחירה מוקדמת
-            label_visibility="collapsed",
-            key=f"{key_prefix}_radio",
+            "בחר/י את העמודה:", options=list(letters), index=None, horizontal=True, key=radio_key
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        if choice:
+        if choice is not None:
             on_press(choice)
+
+
 
 def _safe_rerun():
     try:
@@ -653,7 +573,7 @@ def _safe_rerun():
 
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
+    """הצגת טיימר עליון + אפשרויות A–E כרדיו אופקי."""
     if not st.session_state.get("awaiting_response", False):
         return
 
@@ -669,12 +589,12 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         _safe_rerun()
         return
 
-    # מפתח ייחודי לכפתורים
+    # מפתח ייחודי
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
     key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
-    # שורת כפתורים ממורכזת
+    # רדיו אופקי A–E
     render_choice_buttons(key_prefix, on_press)
 
     # רענון עדין פעם בשנייה לעדכון הטיימר
@@ -863,6 +783,7 @@ def screen_practice_end():
             st.markdown('<div class="end-actions">', unsafe_allow_html=True)
             st.button(" מתחילים ▶︎ ", key="start_trials_btn", on_click=start_and_clear)
             st.markdown('</div>', unsafe_allow_html=True)
+
 
 def screen_trial():
     total = len(st.session_state.trials)
