@@ -191,7 +191,7 @@ st.markdown("""
   margin-top: var(--question-top) !important;  /* הזזה אנכית */
   margin-bottom: var(--question-bottom) !important;
   font-weight: 800;                             /* אופציונלי – דומה ל-### */
-  font-size: clamp(22px, 3vw, 28px);            /* אופציונלי */
+  font-size: clamp(20px, 2.8vw, 26px);            /* אופציונלי */
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
 }
 </style>
