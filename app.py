@@ -210,6 +210,32 @@ div[data-testid="stPlotlyChart"], .stPlotlyChart{
 </style>
 """, unsafe_allow_html=True)
 
+# --- Compact page only when certain wrappers exist (safe & scoped) ---
+def _inject_compact_rules():
+    st.markdown("""
+    <style>
+      /* מצמיד את ה-container לראש הדף רק כשהמסך מכיל את ה-wrapper המתאים */
+      section.main > div.block-container:has(#welcome-wrap){
+        margin-top: -160px !important;  /* כוונון עדין למסך ה-Welcome */
+        padding-top: 6px !important;
+      }
+      section.main > div.block-container:has(#practice-end-wrap){
+        margin-top: -220px !important;  /* כוונון עדין למסך "התרגול הסתיים" */
+        padding-top: 6px !important;
+      }
+      @media (max-width: 680px){
+        section.main > div.block-container:has(#welcome-wrap){ margin-top: -80px !important; }
+        section.main > div.block-container:has(#practice-end-wrap){ margin-top: -120px !important; }
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+# הפעלה פעם אחת אחרי ה-Page Setup
+_inject_compact_rules()
+
+
+
+
 
 # ========= Session State =========
 
