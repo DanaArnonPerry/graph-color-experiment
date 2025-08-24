@@ -626,21 +626,29 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
     </style>
     """, unsafe_allow_html=True)
 
-    # מרכז למסך
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
         st.markdown('<div id="choices-radio">', unsafe_allow_html=True)
+
+        # label לא-ריק (גם אם מוסתר) כדי למנוע אזהרות/שגיאות
         choice = st.radio(
-            label=" ", options=list(letters),
-            horizontal=True,                # ← הופך את זה לשורה אחת
-            index=None,                     # אין בחירה מוקדמת
+            label="בחר/י תשובה",
+            options=list(letters),
+            horizontal=True,
+            index=None,
             label_visibility="collapsed",
             key=f"{key_prefix}_radio",
         )
+
         st.markdown('</div>', unsafe_allow_html=True)
 
-        if choice:
+        # נקרא ל-on_press רק כשהבחירה השתנתה בפועל (מונע לולאות והבהובים)
+        state_key = f"{key_prefix}_radio_last"
+        prev = st.session_state.get(state_key)
+        if choice is not None and choice != prev:
+            st.session_state[state_key] = choice
             on_press(choice)
+
 
 def _safe_rerun():
     try:
