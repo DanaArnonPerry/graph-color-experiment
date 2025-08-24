@@ -86,7 +86,7 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
+section.main > div.block-container { padding-top: 10px; padding-bottom: 0 !important; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
