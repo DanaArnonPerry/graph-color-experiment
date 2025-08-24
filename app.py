@@ -595,22 +595,22 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
         flex-wrap: nowrap !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: clamp(8px, 2vw, 16px) !important;
-        overflow-x: auto;          /* אם מסך קטן מאוד - גלילה אופקית */
-        padding: 6px 2px;
+        gap: var(--choice-gap) !important;   /* <<< מרווח בין הכפתורים */
+        overflow-x: auto;
+        padding: var(--choice-paddingY) 2px; /* <<< ריווח סביב השורה */
         margin-top: var(--buttons-up);
       }
       /* הופך כל אופציה ל"כפתור" עגול */
       #choices-radio [role="radiogroup"] > label{
         display:flex !important;
         align-items:center; justify-content:center;
-        min-width: clamp(44px, 6vw, 60px);
-        height: clamp(44px, 6vw, 60px);
+        min-width: var(--choice-size);       /* <<< קוטר/רוחב */
+        height: var(--choice-size);          /* <<< קוטר/גובה */
         border-radius: 9999px;
         border: 1.5px solid #9ca3af;
         background: #e5e7eb;
         font-weight: 800;
-        font-size: clamp(16px, 2.2vw, 20px);
+        font-size: var(--choice-font);       /* <<< גודל טקסט */
         color: #111;
         user-select: none;
         padding: 0 !important;
@@ -625,6 +625,7 @@ def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E
       #choices-radio [role="radio"] { display:none !important; }
     </style>
     """, unsafe_allow_html=True)
+
 
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
