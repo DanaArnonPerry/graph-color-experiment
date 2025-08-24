@@ -86,7 +86,7 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { padding-top: 10px; padding-bottom: 0 !important; }
+section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -97,12 +97,7 @@ section.main > div.block-container { padding-top: 10px; padding-bottom: 0 !impor
 }
 
 /* פסי רווח תחתונים מיותרים */
-footer{
-  display: none !important;
-  height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
+footer {visibility: hidden;}
 </style>
 """,
     unsafe_allow_html=True,
@@ -178,7 +173,7 @@ div[data-testid="stProgressBar"]{
   position: sticky;
   top: 48px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
   z-index: 100;       /* נמוך מהטיימר (9999) */
-  margin-top: 0 !important;
+  margin-top: -160px;    /* ריווח קטן מהרכיב שמעל */
 }
 </style>
 """, unsafe_allow_html=True)
