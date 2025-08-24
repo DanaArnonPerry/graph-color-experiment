@@ -880,12 +880,10 @@ def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
 
+    # ניצור placeholder לכל התוכן של המסך הזה
     ph = st.empty()
     with ph.container():
-        # <<< עטיפה למסך הזה (מפעילה את הצמצום)
-        st.markdown('<div id="practice-end-wrap">', unsafe_allow_html=True)
-
-        # ה-CSS והתוכן הקיימים שלך נשארים:
+        # CSS ממוקד למסך הזה
         st.markdown("""
         <style>
           .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
@@ -904,6 +902,7 @@ def screen_practice_end():
 
         timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
 
+        # התוכן
         st.markdown(f"""
         <div class="end-wrap">
           <div class="end-title">התרגול הסתיים 🎉</div>
@@ -916,20 +915,19 @@ def screen_practice_end():
         </div>
         """, unsafe_allow_html=True)
 
+        # כפתור מעבר – מרוקנים את ה-placeholder לפני שינוי ה-state
+        def start_and_clear():
+            ph.empty()  # מסיר את כל המסך הזה מיד
+            st.session_state.page = "trial"
+            st.session_state.t_start = None
+            st.session_state.awaiting_response = False
+            st.session_state.last_feedback_html = ""
+
         mid = st.columns([1,6,1])[1]
         with mid:
             st.markdown('<div class="end-actions">', unsafe_allow_html=True)
-            def start_and_clear():
-                ph.empty()
-                st.session_state.page = "trial"
-                st.session_state.t_start = None
-                st.session_state.awaiting_response = False
-                st.session_state.last_feedback_html = ""
             st.button(" מתחילים ▶︎ ", key="start_trials_btn", on_click=start_and_clear)
             st.markdown('</div>', unsafe_allow_html=True)
-
-        # סגירת העטיפה
-        st.markdown('</div>', unsafe_allow_html=True)
 
 def screen_trial():
     total = len(st.session_state.trials)
