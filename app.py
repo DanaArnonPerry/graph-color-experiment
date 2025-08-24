@@ -214,17 +214,18 @@ st.markdown("""
 
 st.markdown("""
 <style>
-/* מצמצם את המרווח בין העמודות בשורה שיש בה כפתורי Streamlit */
-div[data-testid="stHorizontalBlock"]:has(> div [data-testid="stButton"]) {
-  gap: 2px !important;            /* <<< שנהי לכמה שרוצים */
+/* צמצום רווחים ושוליים בשורת הכפתורים – ללא :has */
+#buttons-row + div[data-testid="stHorizontalBlock"],
+#buttons-row ~ div[data-testid="stHorizontalBlock"]{
+  gap: 2px !important;            /* שנהי אם תרצי */
 }
 
-/* מצמצם גם את הפאדינג הפנימי של כל עמודה בשורה הזו */
-div[data-testid="stHorizontalBlock"]:has(> div [data-testid="stButton"])
-  > div[data-testid="column"]{
+#buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+#buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
