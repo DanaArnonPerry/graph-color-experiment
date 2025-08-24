@@ -77,7 +77,7 @@ USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 # ========= Page Setup =========
 st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", 
                    page_icon="📊", 
-                   layout="centered"
+                   layout="centered",
                     menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
 )
 # --- Hide Streamlit chrome (decoration/header/toolbar) safely ---
