@@ -1,4 +1,4 @@
-# app.py
+    # app.py
 import os
 import time
 import random
@@ -75,18 +75,52 @@ LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
 # ========= Page Setup =========
-st.set_page_config(page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered")
-st.markdown(
-    """
+st.set_page_config(
+    page_title="ניסוי בזיכרון חזותי של גרפים",
+    page_icon="📊",
+    layout="centered",
+    menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
+)
+
+# Hide Streamlit chrome (decoration/header/toolbar)
+st.markdown("""
 <style>
-html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif;}
+/* פס הגרדיינט העליון */
+div[data-testid="stDecoration"] { display: none !important; }
+/* הכותרת העליונה והטולבר (⋮ / GitHub / ✎ / ⭐ / Share) */
+header[data-testid="stHeader"] { display: none !important; }
+div[data-testid="stToolbar"] { display: none !important; }
+/* תאימות ישנה */
+#MainMenu { visibility: hidden !important; }
+</style>
+""", unsafe_allow_html=True)
+
+# Fallback קטן אם האלמנטים מוזרקים מחדש בדינמיות
+components.html("""
+<script>
+(function(){
+  const hide = () => {
+    document.querySelectorAll(
+      '[data-testid="stDecoration"], header[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu'
+    ).forEach(el => { el.style.display='none'; el.style.visibility='hidden'; });
+  };
+  hide();
+  new MutationObserver(hide).observe(document.documentElement,{subtree:true,childList:true});
+})();
+</script>
+""", height=0)
+
+# בסיס עיצובי כללי + RTL + טיימר
+st.markdown("""
+<style>
+html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
 blockquote, pre, code { direction: ltr; text-align: left; }
 
 /* אפס מרווחים סביב גרף */
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
-/* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-height: 100vh;}
+/* קומפקטיות כללית */
+section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-height: 100vh; }
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -96,188 +130,61 @@ section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-
   font-weight: 800; font-size: 14px; letter-spacing: .5px;
 }
 
-/* פסי רווח תחתונים מיותרים */
-footer {visibility: hidden;}
+/* הסתרת footer */
+footer { visibility: hidden; }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
-
+# Progress bar — צבעים ותאימות (חדש+ישן) + מיקום מתחת לטיימר
 st.markdown("""
 <style>
-/* ===== Progress bar: black fill, grey track (new + old DOM) ===== */
-
-/* NEWER: <progress> element */
+/* צבעים – חדש/ישן */
 div[data-testid="stProgress"] progress,
 div[data-testid="stProgressBar"] progress {
   appearance: none; -webkit-appearance: none;
   width: 100%; height: 12px; border: none; background: transparent;
-  accent-color: #000 !important;              /* צבע המילוי (תקני) */
+  accent-color: #000 !important;
 }
-/* WebKit track & fill */
 div[data-testid="stProgress"] progress::-webkit-progress-bar,
-div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
-  background-color: #e5e7eb !important;       /* צבע המסילה */
-  border-radius: 9999px;
-}
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar { background-color: #e5e7eb !important; border-radius: 9999px; }
 div[data-testid="stProgress"] progress::-webkit-progress-value,
-div[data-testid="stProgressBar"] progress::-webkit-progress-value {
-  background-color: #000 !important;          /* מילוי שחור */
-  border-radius: 9999px;
-}
-/* Firefox fill */
+div[data-testid="stProgressBar"] progress::-webkit-progress-value { background-color: #000 !important; border-radius: 9999px; }
 div[data-testid="stProgress"] progress::-moz-progress-bar,
-div[data-testid="stProgressBar"] progress::-moz-progress-bar {
-  background-color: #000 !important;
-  border-radius: 9999px;
-}
+div[data-testid="stProgressBar"] progress::-moz-progress-bar { background-color: #000 !important; border-radius: 9999px; }
 
-/* OLDER: div-based progressbar (כמו בשרשור) */
-.stProgress > div > div > div {               /* המסילה */
-  background-color: #e5e7eb !important;
-}
-.stProgress > div > div > div > div {         /* המילוי */
-  background-color: #000 !important;
-}
+/* תאימות ישנה div-based */
+.stProgress > div > div > div { background-color: #e5e7eb !important; }
+.stProgress > div > div > div > div { background-color: #000 !important; }
 
-/* fallback כללי ישן */
-div[data-testid="stProgress"] div[role="progressbar"]        { background-color: #e5e7eb !important; border-radius: 9999px !important; }
-div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color: #000 !important;     border-radius: 9999px !important; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-:root{
-  --graph-top: 100px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
-  --buttons-up: -20px; /* כמה להרים את הכפתורים (שלילי=למעלה, חיובי=למטה) */
-}
-
-/* הזזת הגרף למטה/למעלה */
-div[data-testid="stPlotlyChart"], .stPlotlyChart{
-  margin-top: var(--graph-top) !important;
-}
-
-/* קירוב שורת הכפתורים לגרף */
-.choice-wrap{ margin-top: var(--buttons-up) !important; }
-</style>
-""", unsafe_allow_html=True)
-
-
-st.markdown("""
-<style>
-/* מצמיד את סרגל ההתקדמות מתחת לטיימר הקבוע */
+/* מיקום מתחת לטיימר הקבוע */
 div[data-testid="stProgress"],
 div[data-testid="stProgressBar"]{
   position: sticky;
-  top: 10px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
-  z-index: 20;       /* נמוך מהטיימר (9999) */
-  margin-top: -180px;    /* ריווח קטן מהרכיב שמעל */
-  margin-bottom: 8px; /* הוסף רווח תחתון קטן */
+  top: 6px !important;      /* מתחת לטיימר */
+  z-index: 20;
+  margin-top: -240px !important;  /* מקרב את הפס והתוכן שאחריו למעלה */
+  margin-bottom: 8px !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
+# משתנים ומחלקות פעילות – גרף, שאלה, כפתורי A–E (איחוד ל-:root אחד)
 st.markdown("""
 <style>
 :root{
-  --graph-top: -40px;
-  --buttons-up: -200px;
-  --question-top: -120px;      /* כמה להוריד/להעלות את השאלה */
-  --question-bottom: 0px;  /* רווח מתחת לשאלה */
-}
-.question-text{
-  text-align: center !important;               /* מרכז אופקית */
-  margin-top: var(--question-top) !important;  /* הזזה אנכית */
-  margin-bottom: var(--question-bottom) !important;
-  font-weight: 800;                             /* אופציונלי – דומה ל-### */
-  font-size: clamp(20px, 2.8vw, 26px);            /* אופציונלי */
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
-}
-</style>
-""", unsafe_allow_html=True)
+  /* קומפקטיות אנכית – הערכים הסופיים */
+  --question-top: -160px !important;    /* היה -120px */
+  --graph-top: -70px !important;        /* היה -40px */
+  --buttons-up: -220px !important;      /* היה -200px */
 
-st.markdown("""
-<style>
-:root{
-  --buttons-gap: 6px;  /* המרווח המדויק בין הכפתורים */
+  /* גדלי בחירות A–E */
+  --choice-size: 130px !important;
+  --choice-font: 40px !important;
+  --choice-gap: 22px !important;
+  --choice-paddingY: 4px;
 }
 
-/* ה-st.columns שנוצר מיד אחרי #buttons-row */
-#buttons-row + div[data-testid="stHorizontalBlock"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"]{
-  gap: var(--buttons-gap) !important;
-  column-gap: var(--buttons-gap) !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* צמצום רווחים ושוליים בשורת הכפתורים – ללא :has */
-#buttons-row + div[data-testid="stHorizontalBlock"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"]{
-  gap: 2px !important;            /* שנהי אם תרצי */
-}
-
-#buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* --- Mobile fix: keep A–E buttons in one horizontal row --- */
-@media (max-width: 680px){
-  /* להפוך את ה-grid של st.columns לשורת Flex */
-  #buttons-row + div[data-testid="stHorizontalBlock"],
-  #buttons-row ~ div[data-testid="stHorizontalBlock"]{
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 8px !important;           /* מרווח בין הכפתורים במובייל */
-    overflow-x: auto;              /* למקרה של מסכים צרים במיוחד */
-  }
-
-  /* למנוע מה"עמודות" לתפוס רוחב מלא */
-  #buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-  #buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-    flex: 0 0 auto !important;
-    width: auto !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  /* מידות כפתורים מותאמות מובייל */
-  #buttons-row + div[data-testid="stHorizontalBlock"] .stButton>button,
-  #buttons-row ~ div[data-testid="stHorizontalBlock"] .stButton>button{
-    width: 44px !important;
-    height: 44px !important;
-    font-size: 18px !important;
-  }
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-st.markdown("""
-<style>
-/* ===== גודל, מרווח ופונט של כפתורי ה-radio ===== */
-:root{
-  --choice-size: 130px !important;     /* קוטר הכפתור (גובה+רוחב) */
-  --choice-font: 40px !important;     /* גודל האות בתוך הכפתור */
-  --choice-gap: 22px !important;      /* מרווח בין הכפתורים */
-  --choice-paddingY: 4px;  /* רווח אנכי מסביב לשורה */
-}
-
-/* ערכים ייעודיים למובייל (אפשר לכוונן) */
+/* במובייל – מידות מתונות יותר */
 @media (max-width: 680px){
   :root{
     --choice-size: 44px;
@@ -285,19 +192,49 @@ st.markdown("""
     --choice-gap: 8px;
   }
 }
+
+/* הזזת השאלה */
+.question-text{
+  text-align: center !important;
+  margin-top: var(--question-top) !important;
+  margin-bottom: 0 !important;
+  font-weight: 800;
+  font-size: clamp(20px, 2.8vw, 26px);
+  font-family: 'Rubik','Segoe UI',Arial,sans-serif !important;
+}
+
+/* הזזת הגרף */
+div[data-testid="stPlotlyChart"], .stPlotlyChart{
+  margin-top: var(--graph-top) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-/* מסתיר את כותרת העל והטולבר של סטרימליט (כולל ב-Cloud) */
-header[data-testid="stHeader"] { display: none; }
-div[data-testid="stToolbar"] { display: none; }
+# --- Compact page only when certain wrappers exist (safe & scoped) ---
+def _inject_compact_rules():
+    st.markdown("""
+    <style>
+      /* מצמיד את ה-container לראש הדף רק כשהמסך מכיל את ה-wrapper המתאים */
+      section.main > div.block-container:has(#welcome-wrap){
+        margin-top: -160px !important;  /* כוונון עדין למסך ה-Welcome */
+        padding-top: 6px !important;
+      }
+      section.main > div.block-container:has(#practice-end-wrap){
+        margin-top: -220px !important;  /* כוונון עדין למסך "התרגול הסתיים" */
+        padding-top: 6px !important;
+      }
+      @media (max-width: 680px){
+        section.main > div.block-container:has(#welcome-wrap){ margin-top: -80px !important; }
+        section.main > div.block-container:has(#practice-end-wrap){ margin-top: -120px !important; }
+      }
+    </style>
+    """, unsafe_allow_html=True)
 
-/* ריווח קטן מלמעלה כדי להצמיד את התוכן לקצה */
-section.main > div.block-container { padding-top: 6px; }
-</style>
-""", unsafe_allow_html=True)
+# הפעלה פעם אחת אחרי ה-Page Setup
+_inject_compact_rules()
+
+
+
 
 
 # ========= Session State =========
@@ -743,7 +680,20 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
 # ========= Screens =========
 
 def screen_welcome():
-    st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)  # ← חדש
+    # בדיקות קיימות (נשארות זהות)
+    if not os.path.exists(DATA_PATH):
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
+    try:
+        df = load_data()
+    except Exception as e:
+        st.error(str(e)); st.stop()
+    total_rows = len(df)
+    if total_rows < 2:
+        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
+
+    # <<< עטיפה שמפעילה את הצמצום למסך הזה בלבד
+    st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)
+
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
@@ -757,26 +707,14 @@ def screen_welcome():
 
 לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול.**
 
+
 כדי להתחיל – לחצו על **המשך לתרגול**.
 """
     )
-    st.markdown('</div>', unsafe_allow_html=True)  # ← חדש
-    ...
 
-    if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
-    try:
-        df = load_data()
-    except Exception as e:
-        st.error(str(e)); st.stop()
-    total_rows = len(df)
-    if total_rows < 2:
-        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
-
-    # עדכון טקסט לפי פרמטרים דינמיים
+    # (הטקסטים הדינמיים / אזהרות נשארים כמו אצלך)
     if st.session_state.timeout_sec != TRIAL_TIMEOUT_DEFAULT or st.session_state.n_trials_req != N_TRIALS_DEFAULT:
         st.info(f"הרצה זו תוגדר עם {st.session_state.n_trials_req} שאלות וזמן {st.session_state.timeout_sec} שניות לשאלה (ע\"י פרמטרי כתובת URL).")
-
     if total_rows < 2 + st.session_state.n_trials_req:
         st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום {st.session_state.n_trials_req}. נריץ את הקיים.")
 
@@ -798,6 +736,10 @@ def screen_welcome():
         st.session_state.page = "practice"
 
     st.button("המשך לתרגול", on_click=on_start)
+
+    # סגירת העטיפה
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 def _practice_one(idx: int):
@@ -861,7 +803,78 @@ def _practice_one(idx: int):
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
+# ↓↓↓ חדש: CSS ממוקד למסך הזה בלבד
+    st.markdown("""
+    <style>
+      /* מושך את כל בלוק "התרגול הסתיים" למעלה בלבד */
+      #practice-end-wrap{
+        margin-top: -140px !important;      /* אפשר לכוונן: -120 / -160 */
+        /* מאפס משתנים גלובליים כדי שלא יזיזו תוכן במסך הזה */
+        --graph-top: 0px; 
+        --buttons-up: 0px; 
+        --question-top: 0px; 
+        --question-bottom: 0px;
+      }
+      @media (max-width: 680px){
+        #practice-end-wrap{ margin-top: -80px !important; }
+      }
+    </style>
+    """, unsafe_allow_html=True)
+    # ↑↑↑ סוף התוספת
 
+    # ניצור placeholder לכל התוכן של המסך הזה
+    ph = st.empty()
+    with ph.container():
+        # ↓↓↓ חדש: פותחים עטיפה למסך הזה
+        st.markdown('<div id="practice-end-wrap">', unsafe_allow_html=True)
+
+        # CSS קיים למסך
+        st.markdown("""
+        <style>
+          .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
+          .end-title{ font-size:clamp(26px,3vw,36px); font-weight:800; margin-bottom:8px; }
+          .end-sub{ font-size:clamp(18px,2.2vw,22px); margin:12px 0 18px; }
+          .end-list{ text-align:right; margin:0 auto 18px; padding:0 20px; }
+          .end-list li{ margin:6px 0; }
+          .end-actions{ display:flex; justify-content:center; margin-top:10px; }
+          .end-actions .stButton>button{
+            background:#111; color:#fff; border:1px solid #111;
+            border-radius:12px; padding:10px 22px; font-weight:800; font-size:18px;
+          }
+          .end-actions .stButton>button:hover{ filter:brightness(1.06); }
+        </style>
+        """, unsafe_allow_html=True)
+
+        timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
+
+        # התוכן (כפי שהיה)
+        st.markdown(f"""
+        <div class="end-wrap">
+          <div class="end-title">התרגול הסתיים 🎉</div>
+          <div class="end-sub">לפני שממשיכים לניסוי האמיתי, קראו בקצרה את ההנחיות:</div>
+          <ul class="end-list">
+            <li>כל שאלה מוגבלת ל־<b>{timeout}</b> שניות.</li>
+            <li>בחרו את האות <b>A–E</b> של העמודה המתאימה.</li>
+            <li>ענו במהירות – אין אפשרות לחזור אחורה.</li>
+          </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        def start_and_clear():
+            ph.empty()
+            st.session_state.page = "trial"
+            st.session_state.t_start = None
+            st.session_state.awaiting_response = False
+            st.session_state.last_feedback_html = ""
+
+        mid = st.columns([1,6,1])[1]
+        with mid:
+            st.markdown('<div class="end-actions">', unsafe_allow_html=True)
+            st.button(" מתחילים ▶︎ ", key="start_trials_btn", on_click=start_and_clear)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # ↑↑↑ חדש: סוגרים את העטיפה
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def screen_practice_end():
     st.session_state.awaiting_response = False
