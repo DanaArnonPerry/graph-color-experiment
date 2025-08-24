@@ -86,14 +86,14 @@ blockquote, pre, code { direction: ltr; text-align: left; }
 div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; }
 
 /* קומפקטיות – פחות רווחים כדי למנוע גלילה */
-section.main > div.block-container { padding-top: 10px; padding-bottom: 12px; }
+section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-height: 100vh;}
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
   position: fixed; top: 0; left: 50%; transform: translateX(-50%);
   z-index: 9999; background: #111; color: #fff;
-  padding: 6px 12px; margin: 0; border-radius: 0 0 12px 12px;
-  font-weight: 800; letter-spacing: .5px;
+  padding: 4px 10px; margin: 0; border-radius: 0 0 10px 10px;
+  font-weight: 800; font-size: 14px; letter-spacing: .5px;
 }
 
 /* פסי רווח תחתונים מיותרים */
