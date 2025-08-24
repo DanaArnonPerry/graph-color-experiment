@@ -593,7 +593,7 @@ def _render_graph_block(title_html, question_text, row_dict):
     )
     fig.update_layout(
         margin=dict(l=15, r=15, t=10, b=0),
-        height=280,
+        height=300,
         showlegend=False, bargap=0.35,
         uniformtext_minsize=12, uniformtext_mode="hide",
         xaxis=dict(title="", showgrid=False),
