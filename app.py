@@ -839,7 +839,7 @@ def screen_practice_end():
         # CSS ממוקד למסך הזה
         st.markdown("""
         <style>
-          .end-wrap{ text-align:center; margin:40px auto 0; max-width:740px; }
+          .end-wrap{ text-align:center; margin:10px auto 0; max-width:740px; }
           .end-title{ font-size:clamp(26px,3vw,36px); font-weight:800; margin-bottom:8px; }
           .end-sub{ font-size:clamp(18px,2.2vw,22px); margin:12px 0 18px; }
           .end-list{ text-align:right; margin:0 auto 18px; padding:0 20px; }
