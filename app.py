@@ -54,7 +54,7 @@ section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
 
 /* מובייל – משיכה מתונה יותר */
 @media (max-width: 680px){
-  #welcome-wrap{ margin-top: -3rem !important; }
+  #welcome-wrap{ margin-top: -6rem !important; }
   #practice-end-wrap{ margin-top: -3rem !important; }
 }
 </style>
