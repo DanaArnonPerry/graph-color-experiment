@@ -767,42 +767,50 @@ def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> 
 # ========= Screens =========
 
 def screen_welcome():
-    st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)
-    # בדיקות קיימות (נשארות זהות)
+    # בדיקות מוקדמות (כדי שלא נשאיר div פתוח אם יש stop)
     if not os.path.exists(DATA_PATH):
-        st.error(f"לא נמצא הקובץ: {DATA_PATH}."); st.stop()
+        st.error(f"לא נמצא הקובץ: {DATA_PATH}.")
+        st.stop()
     try:
         df = load_data()
     except Exception as e:
-        st.error(str(e)); st.stop()
+        st.error(str(e))
+        st.stop()
+
     total_rows = len(df)
     if total_rows < 2:
-        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
-  
+        st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו.")
+        st.stop()
+
+    # עטיפה שמאפשרת להזיז את המסך ב-CSS (#welcome-wrap)
+    st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)
 
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown(
         """
-    **שלום וברוכ/ה הבא/ה לניסוי**
-    
-    במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
-    
-    חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
-    
-    **איך עונים?** לוחצים על הכפתור עם האות המתאימה מתחת לגרף **A / B / C / D / E**.
-    
-    לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול.**
-    
-    
-    כדי להתחיל – לחצו על **המשך לתרגול**.
-    """
-        )
-    
-    # (הטקסטים הדינמיים / אזהרות נשארים כמו אצלך)
+**שלום וברוכ/ה הבא/ה לניסוי**
+
+במהלך הניסוי יוצגו **40 גרפים** שלגביהם תתבקש/י לציין מהו הערך הנמוך ביותר או הגבוה ביותר.
+
+חשוב לענות מהר ככל שניתן; לאחר **30 שניות**, אם לא נבחרה תשובה, יהיה מעבר אוטומטי לשאלה הבאה.
+
+**איך עונים?** לוחצים על הכפתור עם האות המתאימה מתחת לגרף **A / B / C / D / E**.
+
+לפני תחילת הניסוי, יוצגו **שתי שאלות תרגול.**
+
+כדי להתחיל – לחצו על **המשך לתרגול**.
+"""
+    )
+
+    # הודעות דינמיות
     if st.session_state.timeout_sec != TRIAL_TIMEOUT_DEFAULT or st.session_state.n_trials_req != N_TRIALS_DEFAULT:
-        st.info(f"הרצה זו תוגדר עם {st.session_state.n_trials_req} שאלות וזמן {st.session_state.timeout_sec} שניות לשאלה (ע\"י פרמטרי כתובת URL).")
+        st.info(
+            f"הרצה זו תוגדר עם {st.session_state.n_trials_req} שאלות וזמן {st.session_state.timeout_sec} שניות לשאלה (ע\"י פרמטרי כתובת URL)."
+        )
     if total_rows < 2 + st.session_state.n_trials_req:
-        st.warning(f"התקבלו רק {max(0,total_rows-2)} שאלות לניסוי במקום {st.session_state.n_trials_req}. נריץ את הקיים.")
+        st.warning(
+            f"התקבלו רק {max(0, total_rows - 2)} שאלות לניסוי במקום {st.session_state.n_trials_req}. נריץ את הקיים."
+        )
 
     def on_start():
         _ensure_participant_id()
@@ -811,6 +819,7 @@ def screen_welcome():
         practice_items = df.iloc[:2].to_dict(orient="records")
         pool_df = df.iloc[2: 2 + n_trials_final].copy()
         trials = build_alternating_trials(pool_df, n_trials_final)
+
         st.session_state.df = df
         st.session_state.practice_list = practice_items
         st.session_state.trials = trials
@@ -823,8 +832,8 @@ def screen_welcome():
 
     st.button("המשך לתרגול", on_click=on_start)
 
-    # סגירת העטיפה
-    st.markdown('</div>', unsafe_allow_html=True)  # ← לסגור את ה־div
+    st.markdown("</div>", unsafe_allow_html=True)  # סגירת ה-wrap
+
 
 
 
