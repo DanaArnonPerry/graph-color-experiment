@@ -186,7 +186,7 @@ st.markdown(
   --choice-paddingY: 4px;
 
   /* הזזות למסכי פתיחה/סיום */
-  --welcome-shift: -2rem;
+  --welcome-shift: -5rem;
   --practice-end-shift: -2rem;
 }
 
