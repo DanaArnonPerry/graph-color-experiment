@@ -197,7 +197,7 @@ div[data-testid="stProgressBar"]{
   position: sticky;
   top: 42px !important;  /* מתחת לטיימר */
   z-index: 20;
-  margin-top: 0 !important;      /* תוקן - ללא margin שלילי */
+  margin-top: -20px !important;      /* תוקן - ללא margin שלילי */
   margin-bottom: 8px !important;
 }
 </style>
