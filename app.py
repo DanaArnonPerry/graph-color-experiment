@@ -186,7 +186,7 @@ st.markdown(
   --choice-paddingY: 4px;
 
   /* הזזות למסכי פתיחה/סיום */
-  --welcome-shift: -20rem;
+  --welcome-shift: -6rem;
   --practice-end-shift: -2rem;
 }
 
@@ -199,7 +199,7 @@ st.markdown(
     --question-top: -30px;
     --graph-top: -20px;
     --buttons-up: -50px;
-    --welcome-shift: -1rem;
+    --welcome-shift: -3rem;
     --practice-end-shift: -1rem;
   }
 }
