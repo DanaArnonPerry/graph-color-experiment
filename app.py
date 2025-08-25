@@ -9,6 +9,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 from io import BytesIO
+from streamlit_autorefresh import st_autorefresh
 
 # --- Ensure Plotly is available (safe import) ---
 import plotly.graph_objects as go
