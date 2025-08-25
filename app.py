@@ -198,8 +198,8 @@ st.markdown(
 <style>
 :root{
   /* קומפקטיות אנכית למסכי שאלות */
-  --question-top: -140px;
-  --graph-top: -40px;
+  --question-top: -20px;
+  --graph-top: 10px;
   --buttons-up: -100px;
 
   /* גדלי בחירות A–E */
