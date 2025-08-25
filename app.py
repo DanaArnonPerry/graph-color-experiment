@@ -288,6 +288,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+/* מסתיר את כותרת העל והטולבר של סטרימליט (כולל ב-Cloud) */
+header[data-testid="stHeader"] { display: none; }
+div[data-testid="stToolbar"] { display: none; }
+
+/* ריווח קטן מלמעלה כדי להצמיד את התוכן לקצה */
+section.main > div.block-container { padding-top: 6px; }
+</style>
+""", unsafe_allow_html=True)
 
 
 # ========= Session State =========
