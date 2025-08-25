@@ -146,152 +146,120 @@ div[data-testid="stProgress"] div[role="progressbar"] > div  { background-color:
 st.markdown("""
 <style>
 :root{
-  --graph-top: 100px;   /* כמה להוריד את הגרף (גדול יותר = נמוך יותר) */
-  --buttons-up: -20px; /* כמה להרים את הכפתורים (שלילי=למעלה, חיובי=למטה) */
+  /* גובה הטיימר בפיקסלים (כדי להצמיד מתחתיו את ה-progress) */
+  --timer-h: 28px;
+
+  /* מרחקי המסך הגרפי: שאלה/גרף/כפתורים */
+  --question-top: -62px;  /* יותר גבוה */
+  --graph-top:   -34px;   /* יותר גבוה */
+  --buttons-up:  -88px;
+
+  /* מסכי טקסט */
+  --welcome-shift:       -6rem;
+  --practice-end-shift:  -7rem;   /* הוגדל לפי בקשתך */
 }
 
-/* הזזת הגרף למטה/למעלה */
-div[data-testid="stPlotlyChart"], .stPlotlyChart{
-  margin-top: var(--graph-top) !important;
-}
-
-/* קירוב שורת הכפתורים לגרף */
-.choice-wrap{ margin-top: var(--buttons-up) !important; }
-</style>
-""", unsafe_allow_html=True)
-
-
-st.markdown("""
-<style>
-/* מצמיד את סרגל ההתקדמות מתחת לטיימר הקבוע */
-div[data-testid="stProgress"],
-div[data-testid="stProgressBar"]{
-  position: sticky;
-  top: 10px;          /* מתחת ל-#fixed-timer (שגובהו ~36–40px) */
-  z-index: 20;       /* נמוך מהטיימר (9999) */
-  margin-top: -180px;    /* ריווח קטן מהרכיב שמעל */
-  margin-bottom: 8px; /* הוסף רווח תחתון קטן */
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-:root{
-  --graph-top: -40px;
-  --buttons-up: -200px;
-  --question-top: -120px;      /* כמה להוריד/להעלות את השאלה */
-  --question-bottom: 0px;  /* רווח מתחת לשאלה */
-}
-.question-text{
-  text-align: center !important;               /* מרכז אופקית */
-  margin-top: var(--question-top) !important;  /* הזזה אנכית */
-  margin-bottom: var(--question-bottom) !important;
-  font-weight: 800;                             /* אופציונלי – דומה ל-### */
-  font-size: clamp(20px, 2.8vw, 26px);            /* אופציונלי */
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-:root{
-  --buttons-gap: 6px;  /* המרווח המדויק בין הכפתורים */
-}
-
-/* ה-st.columns שנוצר מיד אחרי #buttons-row */
-#buttons-row + div[data-testid="stHorizontalBlock"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"]{
-  gap: var(--buttons-gap) !important;
-  column-gap: var(--buttons-gap) !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* צמצום רווחים ושוליים בשורת הכפתורים – ללא :has */
-#buttons-row + div[data-testid="stHorizontalBlock"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"]{
-  gap: 2px !important;            /* שנהי אם תרצי */
-}
-
-#buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-#buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* --- Mobile fix: keep A–E buttons in one horizontal row --- */
-@media (max-width: 680px){
-  /* להפוך את ה-grid של st.columns לשורת Flex */
-  #buttons-row + div[data-testid="stHorizontalBlock"],
-  #buttons-row ~ div[data-testid="stHorizontalBlock"]{
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 8px !important;           /* מרווח בין הכפתורים במובייל */
-    overflow-x: auto;              /* למקרה של מסכים צרים במיוחד */
-  }
-
-  /* למנוע מה"עמודות" לתפוס רוחב מלא */
-  #buttons-row + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-  #buttons-row ~ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-    flex: 0 0 auto !important;
-    width: auto !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  /* מידות כפתורים מותאמות מובייל */
-  #buttons-row + div[data-testid="stHorizontalBlock"] .stButton>button,
-  #buttons-row ~ div[data-testid="stHorizontalBlock"] .stButton>button{
-    width: 44px !important;
-    height: 44px !important;
-    font-size: 18px !important;
-  }
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-st.markdown("""
-<style>
-/* ===== גודל, מרווח ופונט של כפתורי ה-radio ===== */
-:root{
-  --choice-size: 130px !important;     /* קוטר הכפתור (גובה+רוחב) */
-  --choice-font: 40px !important;     /* גודל האות בתוך הכפתור */
-  --choice-gap: 22px !important;      /* מרווח בין הכפתורים */
-  --choice-paddingY: 4px;  /* רווח אנכי מסביב לשורה */
-}
-
-/* ערכים ייעודיים למובייל (אפשר לכוונן) */
+/* מובייל – מידות מתונות יותר */
 @media (max-width: 680px){
   :root{
-    --choice-size: 44px;
-    --choice-font: 16px;
-    --choice-gap: 8px;
+    --question-top: -38px;
+    --graph-top:   -22px;
+    --buttons-up:  -56px;
+    --welcome-shift:      -4rem;
+    --practice-end-shift: -4rem;  /* גם כאן העלינו עוד */
   }
 }
-</style>
-""", unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-/* מסתיר את כותרת העל והטולבר של סטרימליט (כולל ב-Cloud) */
-header[data-testid="stHeader"] { display: none; }
-div[data-testid="stToolbar"] { display: none; }
+/* RTL בסיסי + טיפוגרפיה */
+html, body, [class*="css"] {
+  direction: rtl; text-align: right;
+  font-family: "Rubik","Segoe UI","Arial",sans-serif;
+}
+blockquote, pre, code { direction: ltr; text-align: left; }
 
-/* ריווח קטן מלמעלה כדי להצמיד את התוכן לקצה */
-section.main > div.block-container { padding-top: 6px; }
+/* הסתרת כרום Streamlit */
+div[data-testid="stDecoration"],
+header[data-testid="stHeader"],
+div[data-testid="stToolbar"]{ display: none !important; }
+#MainMenu { visibility: hidden !important; }
+.stApp > header{ display:none !important; height:0 !important; }
+.stApp > header + div{ padding-top:0 !important; margin-top:0 !important; }
+
+/* פחות רווח עליון למשטח הראשי */
+section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
+  padding-top: .5rem !important;
+}
+
+/* טיימר קבוע עליון */
+#fixed-timer {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+  z-index: 9999; background: #111; color:#fff;
+  padding: 4px 10px; margin: 0;
+  border-radius: 0 0 10px 10px;
+  font-weight: 800; font-size: 14px; letter-spacing: .5px;
+}
+
+/* Progress — צבעים */
+div[data-testid="stProgress"] progress,
+div[data-testid="stProgressBar"] progress {
+  appearance:none; -webkit-appearance:none;
+  width:100%; height:12px; border:none; background:transparent;
+  accent-color:#000 !important;
+}
+div[data-testid="stProgress"] progress::-webkit-progress-bar,
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
+  background:#e5e7eb !important; border-radius:9999px;
+}
+div[data-testid="stProgress"] progress::-webkit-progress-value,
+div[data-testid="stProgressBar"] progress::-webkit-progress-value {
+  background:#000 !important; border-radius:9999px;
+}
+div[data-testid="stProgress"] progress::-moz-progress-bar,
+div[data-testid="stProgressBar"] progress::-moz-progress-bar {
+  background:#000 !important; border-radius:9999px;
+}
+/* תאימות div-based ישן */
+.stProgress > div > div > div { background:#e5e7eb !important; }
+.stProgress > div > div > div > div { background:#000 !important; }
+
+/* Progress — מיקום יציב מתחת לטיימר */
+[data-testid="column"] div[data-testid="stProgress"],
+[data-testid="column"] div[data-testid="stProgressBar"]{
+  position: sticky;
+  top: calc(var(--timer-h) + 8px);   /* ממש מתחת לטיימר */
+  z-index: 20;
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+/* ביטול ריווח עודף של עטיפת הקולום העליונה */
+[data-testid="column"] > div:first-child{
+  padding-top: 0 !important; margin-top: 0 !important;
+}
+
+/* הגרף קרוב לשאלה */
+div[data-testid="stPlotlyChart"], .stPlotlyChart{
+  margin-top: var(--graph-top) !important;
+  margin-bottom: 0 !important;
+}
+
+/* טקסט השאלה */
+.question-text{
+  text-align: center !important;
+  margin-top: var(--question-top) !important;
+  margin-bottom: 0 !important;
+  font-weight: 800;
+  font-size: clamp(20px, 2.8vw, 26px);
+  font-family: 'Rubik','Segoe UI',Arial,sans-serif !important;
+}
+
+/* מסכי טקסט (וולקאם/סיום תרגול) */
+#welcome-wrap{       margin-top: var(--welcome-shift) !important; }
+#practice-end-wrap{  margin-top: var(--practice-end-shift) !important; }
+#welcome-wrap h1, #practice-end-wrap h1{ margin-top: 0 !important; }
+
+/* ריכוך ריצוד */
+footer { visibility: hidden; }
+[data-testid="block-container"]{ will-change: transform; }
 </style>
 """, unsafe_allow_html=True)
 
