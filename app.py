@@ -11,12 +11,7 @@ from PIL import Image
 from io import BytesIO
 
 # --- Ensure Plotly is available (safe import) ---
-try:
-    import plotly.graph_objects as go
-except ModuleNotFoundError:
-    import sys, subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly>=5.20.0"])
-    import plotly.graph_objects as go
+import plotly.graph_objects as go
 
 # Google Sheets
 import gspread
