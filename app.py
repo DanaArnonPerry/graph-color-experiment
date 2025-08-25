@@ -1,4 +1,4 @@
-החלק הזה בקוד פעיל?     # app.py
+# app.py
 import os
 import time
 import random
