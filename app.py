@@ -31,6 +31,38 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': None},
 )
 
+st.markdown("""
+<style>
+/* === Streamlit 1.38+ : הורדת הריווח העליון של המשטח הראשי === */
+section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
+  padding-top: 0.5rem !important;
+}
+
+/* === מסכי טקסט: להרים את התוכן למעלה === */
+#welcome-wrap h1,
+#practice-end-wrap h1{ 
+  margin-top: 0 !important;
+}
+
+/* משיכה עדינה למעלה של כל הבלוק */
+#welcome-wrap{ 
+  margin-top: -6rem !important;
+}
+#practice-end-wrap{ 
+  margin-top: -5rem !important; 
+}
+
+/* מובייל – משיכה מתונה יותר */
+@media (max-width: 680px){
+  #welcome-wrap{ margin-top: -3rem !important; }
+  #practice-end-wrap{ margin-top: -3rem !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+
+
 # Hide Streamlit chrome (decoration/header/toolbar)
 st.markdown(
     """
@@ -99,12 +131,6 @@ div[data-testid="stPlotlyChart"], .stPlotlyChart {
   margin-bottom: 0 !important;
 }
 
-/* קומפקטיות כללית */
-section.main > div.block-container {
-  padding-top: 5px;
-  padding-bottom: 8px;
-  max-height: 100vh;
-}
 
 /* טיימר מקובע למעלה באמצע */
 #fixed-timer {
@@ -196,8 +222,8 @@ st.markdown(
   --choice-paddingY: 4px;
 
   /* הזזות למסכי פתיחה/סיום */
-  --welcome-shift: -6rem;
-  --practice-end-shift: -2rem;
+  --welcome-shift: 0rem;
+  --practice-end-shift: 0rem;
 }
 
 /* במובייל – מידות מתונות יותר */
