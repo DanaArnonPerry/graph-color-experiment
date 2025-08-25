@@ -49,7 +49,7 @@ section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
   margin-top: -6rem !important;
 }
 #practice-end-wrap{ 
-  margin-top: -10rem !important; 
+  margin-top: -20rem !important; 
 }
 
 /* מובייל – משיכה מתונה יותר */
