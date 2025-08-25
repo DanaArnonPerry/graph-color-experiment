@@ -1,4 +1,4 @@
-# app.py
+זה לא עבד.     # app.py
 import os
 import time
 import random
