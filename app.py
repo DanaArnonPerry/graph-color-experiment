@@ -44,19 +44,6 @@ section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
   margin-top: 0 !important;
 }
 
-/* משיכה עדינה למעלה של כל הבלוק */
-#welcome-wrap{ 
-  margin-top: -6rem !important;
-}
-#practice-end-wrap{ 
-  margin-top: -20rem !important; 
-}
-
-/* מובייל – משיכה מתונה יותר */
-@media (max-width: 680px){
-  #welcome-wrap{ margin-top: -6rem !important; }
-  #practice-end-wrap{ margin-top: -3rem !important; }
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -222,8 +209,8 @@ st.markdown(
   --choice-paddingY: 4px;
 
   /* הזזות למסכי פתיחה/סיום */
-  --welcome-shift: 0rem;
-  --practice-end-shift: 0rem;
+  --welcome-shift: -6rem;
+  --practice-end-shift: -5rem;
 }
 
 /* במובייל – מידות מתונות יותר */
@@ -235,8 +222,8 @@ st.markdown(
     --question-top: -30px;
     --graph-top: -20px;
     --buttons-up: -50px;
-    --welcome-shift: -3rem;
-    --practice-end-shift: -1rem;
+    --welcome-shift: -4rem;
+    --practice-end-shift: -3rem;
   }
 }
 
