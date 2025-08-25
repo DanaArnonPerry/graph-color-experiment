@@ -694,15 +694,18 @@ def _safe_rerun():
 
 
 def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
-    """הצגת טיימר עליון + כפתורי A–E צמודים לגרף וממורכזים."""
+    """טיימר עליון + כפתורי A–E, עם רענון לא-חוסם (בלי sleep)."""
     if not st.session_state.get("awaiting_response", False):
         return
 
     elapsed = time.time() - (st.session_state.t_start or time.time())
-    remain = max(0, timeout_sec - int(elapsed))
+    remain = max(0, int(timeout_sec - elapsed))
 
     # טיימר קבוע למעלה
-    st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>",
+        unsafe_allow_html=True,
+    )
 
     # אם הזמן נגמר – סוגרים את ה-trial
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
@@ -710,18 +713,20 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
         _safe_rerun()
         return
 
-    # מפתח ייחודי לכפתורים
-    current_index = (st.session_state.practice_idx
-                     if st.session_state.page == "practice" else st.session_state.i)
+    # מזהה ייחודי לכפתורים
+    current_index = (
+        st.session_state.practice_idx if st.session_state.page == "practice"
+        else st.session_state.i
+    )
     key_prefix = f"choice_{st.session_state.page}_{current_index}"
 
-    # שורת כפתורים ממורכזת
+    # שורת הכפתורים
     render_choice_buttons(key_prefix, on_press)
 
-    # רענון עדין פעם בשנייה לעדכון הטיימר
+    # רענון עדין פעם בשנייה (ללא sleep)
     if st.session_state.get("awaiting_response", False):
-        time.sleep(1)
-        _safe_rerun()
+        st_autorefresh(interval=1000, key=f"tick_{st.session_state.page}")
+
 
 
 def _file_to_base64_html_img_link(path: str, href: str, width_px: int = 140) -> str:
