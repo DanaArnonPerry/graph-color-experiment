@@ -22,7 +22,6 @@ except ModuleNotFoundError:
 import gspread
 from google.oauth2 import service_account
 
-
 # ========= Page Setup =========
 st.set_page_config(
     page_title="ניסוי בזיכרון חזותי של גרפים",
@@ -46,9 +45,6 @@ section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
 
 </style>
 """, unsafe_allow_html=True)
-
-
-
 
 # Hide Streamlit chrome (decoration/header/toolbar)
 st.markdown(
@@ -309,9 +305,6 @@ def _first_existing(paths):
 LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
-
-
-
 # ========= Session State =========
 
 def _admin_ui_enabled() -> bool:
@@ -419,7 +412,6 @@ def _read_service_account_from_secrets() -> dict:
     if not sa:
         raise RuntimeError("Service Account לא נמצא ב-secrets.")
     return sa
-
 
 @st.cache_resource
 def _gs_client():
