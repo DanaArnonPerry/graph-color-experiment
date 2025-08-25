@@ -211,7 +211,7 @@ st.markdown(
 <style>
 :root{
   /* קומפקטיות אנכית למסכי שאלות */
-  --question-top: -60px;
+  --question-top: -140px;
   --graph-top: -40px;
   --buttons-up: -100px;
 
