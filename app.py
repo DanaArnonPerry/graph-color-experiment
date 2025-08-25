@@ -44,6 +44,16 @@ div[data-testid="stToolbar"] { display: none !important; }
 
 /* תאימות ישנה */
 #MainMenu { visibility: hidden !important; }
+
+/* מבטל את ה-padding העליון שהתוכן מקבל אחרי ההדר */
+.stApp > header { 
+    display: none !important; 
+    height: 0 !important; 
+}
+.stApp > header + div { 
+    padding-top: 0 !important; 
+    margin-top: 0 !important; 
+}
 </style>
 """,
     unsafe_allow_html=True,
