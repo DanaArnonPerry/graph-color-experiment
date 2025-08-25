@@ -31,113 +31,103 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': None},
 )
 
-# ===== CSS יציב יחיד (בלי כפילויות) =====
+# ===== CSS יחיד יציב =====
 st.markdown("""
 <style>
+/* RTL + גופן */
+html, body, [class*="css"]{
+  direction: rtl; text-align: right;
+  font-family: "Rubik","Segoe UI","Arial",sans-serif;
+}
+blockquote, pre, code { direction:ltr; text-align:left; }
+
+/* הסתרת כרום של Streamlit (בטוח) */
+div[data-testid="stDecoration"]{display:none!important;}
+header[data-testid="stHeader"]{display:none!important;}
+div[data-testid="stToolbar"]{display:none!important;}
+#MainMenu{visibility:hidden!important;}
+
+/* טיימר קבוע למעלה + ריווח עליון קבוע לתוכן כדי שלא יכנס מתחתיו */
+:root{ --timer-height: 36px; }
+#fixed-timer{
+  position:fixed; top:0; left:50%; transform:translateX(-50%);
+  z-index:1000; background:#111; color:#fff;
+  padding:6px 12px; border-radius:0 0 10px 10px;
+  font-weight:800; font-size:14px; letter-spacing:.5px;
+}
+section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{
+  padding-top: calc(var(--timer-height) + 14px) !important; /* מונע חפיפה */
+}
+
+/* Progress – פשוט ויציב (בלי sticky/translate) */
+div[data-testid="stProgress"] progress,
+div[data-testid="stProgressBar"] progress{
+  appearance:none; -webkit-appearance:none;
+  width:100%; height:12px; border:none;
+  background:transparent; accent-color:#000!important;
+}
+div[data-testid="stProgress"] progress::-webkit-progress-bar,
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar{
+  background:#e5e7eb!important; border-radius:9999px;
+}
+div[data-testid="stProgress"] progress::-webkit-progress-value,
+div[data-testid="stProgressBar"] progress::-webkit-progress-value{
+  background:#000!important; border-radius:9999px;
+}
+div[data-testid="stProgress"], div[data-testid="stProgressBar"]{
+  margin:6px 0 10px 0 !important;
+}
+
+/* גרף/שאלה – מרווחים עדינים */
+.question-text{
+  text-align:center !important;
+  margin:6px 0 0 0 !important;
+  font-weight:800; font-size:clamp(20px, 2.8vw, 26px);
+  font-family:'Rubik','Segoe UI',Arial,sans-serif !important;
+}
+div[data-testid="stPlotlyChart"], .stPlotlyChart{ margin:8px 0 0 0 !important; }
+
+/* מסכי טקסט: הרמה מתונה כדי לא להיות "למטה מדי" */
+#welcome-wrap{ margin-top:-3rem !important; }
+#practice-end-wrap{ margin-top:-2rem !important; }
+@media (max-width:680px){
+  #welcome-wrap{ margin-top:-1.5rem!important; }
+  #practice-end-wrap{ margin-top:-1rem!important; }
+}
+#welcome-wrap h1, #practice-end-wrap h1{ margin-top:0!important; }
+
+/* כפתורי A–E – שורה ממורכזת, נקייה מאייקון הרדיו */
 :root{
-  /* גובה הטיימר (אמיתי ~28px) כדי למקם מתחתיו את ה-progress */
-  --timer-h: 28px;
-
-  /* מרחקים למסכי שאלה */
-  --question-top: -50px;
-  --graph-top: -28px;
-  --buttons-up: -80px;
-
-  /* גדלי בחירות A–E */
   --choice-size: 130px;
   --choice-font: 40px;
   --choice-gap: 22px;
-  --choice-paddingY: 4px;
+}
+@media (max-width:680px){
+  :root{ --choice-size: 44px; --choice-font: 16px; --choice-gap:8px; }
+}
+#choices-radio [role="radio"], 
+#choices-radio input[type="radio"], 
+#choices-radio svg{ display:none !important; }
 
-  /* הזזות למסכי פתיחה/סיום */
-  --welcome-shift: -6rem;
-  --practice-end-shift: -5rem;
+#choices-radio [role="radiogroup"]{
+  display:flex !important; flex-wrap:nowrap !important; justify-content:center !important;
+  align-items:center !important; gap:var(--choice-gap) !important;
+  overflow-x:auto; padding: 4px 2px !important;
+}
+#choices-radio [role="radiogroup"] > label{
+  display:flex !important; align-items:center; justify-content:center;
+  width:var(--choice-size) !important; height:var(--choice-size) !important;
+  box-sizing:border-box !important; border-radius:9999px !important;
+  border:1.5px solid #9ca3af !important; background:#e5e7eb !important;
+  font-weight:800 !important; font-size:var(--choice-font) !important; color:#111 !important;
+  user-select:none !important; padding:0 !important; margin:0 !important;
+}
+#choices-radio [aria-checked="true"]{
+  border-color:#111 !important; background:#d1d5db !important;
 }
 
-/* מובייל – מידות מתונות יותר */
-@media (max-width: 680px){
-  :root{
-    --choice-size: 44px;
-    --choice-font: 16px;
-    --choice-gap: 8px;
-    --question-top: -30px;
-    --graph-top: -20px;
-    --buttons-up: -50px;
-    --welcome-shift: -4rem;
-    --practice-end-shift: -3rem;
-  }
-}
-
-/* RTL בסיסי */
-html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; }
-blockquote, pre, code { direction: ltr; text-align: left; }
-
-/* הסתרת כרום של Streamlit */
-div[data-testid="stDecoration"],
-header[data-testid="stHeader"],
-div[data-testid="stToolbar"]{ display: none !important; }
-#MainMenu { visibility: hidden !important; }
-.stApp > header{ display:none !important; height:0 !important; }
-.stApp > header + div{ padding-top:0 !important; margin-top:0 !important; }
-
-/* פחות רווח עליון למשטח הראשי */
-section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"]{ padding-top: .5rem !important; }
-
-/* טיימר קבוע עליון */
-#fixed-timer {
-  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
-  z-index: 9999; background: #111; color:#fff; padding: 4px 10px; margin: 0;
-  border-radius: 0 0 10px 10px; font-weight: 800; font-size: 14px; letter-spacing: .5px;
-}
-
-/* Progress — צבעים */
-div[data-testid="stProgress"] progress,
-div[data-testid="stProgressBar"] progress {
-  appearance:none; -webkit-appearance:none; width:100%; height:12px; border:none; background:transparent; accent-color:#000 !important;
-}
-div[data-testid="stProgress"] progress::-webkit-progress-bar,
-div[data-testid="stProgressBar"] progress::-webkit-progress-bar { background:#e5e7eb !important; border-radius:9999px; }
-div[data-testid="stProgress"] progress::-webkit-progress-value,
-div[data-testid="stProgressBar"] progress::-webkit-progress-value { background:#000 !important; border-radius:9999px; }
-div[data-testid="stProgress"] progress::-moz-progress-bar,
-div[data-testid="stProgressBar"] progress::-moz-progress-bar { background:#000 !important; border-radius:9999px; }
-/* תאימות ישנה div-based */
-.stProgress > div > div > div { background:#e5e7eb !important; }
-.stProgress > div > div > div > div { background:#000 !important; }
-
-/* Progress — מיקום יציב מתחת לטיימר */
-[data-testid="column"] div[data-testid="stProgress"],
-[data-testid="column"] div[data-testid="stProgressBar"]{
-  position: sticky; top: calc(var(--timer-h) + 14px); z-index: 20;
-  margin-top: 0 !important; margin-bottom: 10px !important;
-}
-/* ביטול ריווח עודף של עטיפת הקולום העליונה */
-[data-testid="column"] > div:first-child{ padding-top:0 !important; margin-top:0 !important; }
-
-/* אפס מרווחים סביב גרף + הזזה למעלה */
-div[data-testid="stPlotlyChart"], .stPlotlyChart{
-  margin-bottom: 0 !important; margin-top: var(--graph-top) !important;
-}
-
-/* טקסט השאלה למעלה */
-.question-text{
-  text-align: center !important;
-  margin-top: var(--question-top) !important;
-  margin-bottom: 0 !important;
-  font-weight: 800;
-  font-size: clamp(20px, 2.8vw, 26px);
-  font-family: 'Rubik','Segoe UI',Arial,sans-serif !important;
-}
-
-/* מסכי הטקסט הספציפיים */
-#welcome-wrap{ margin-top: var(--welcome-shift) !important; }
-#practice-end-wrap{ margin-top: var(--practice-end-shift) !important; }
-/* כותרת צמודה למעלה במסכי וולקאם/סיום */
-#welcome-wrap h1, #practice-end-wrap h1{ margin-top: 0 !important; }
-
-/* הסתרת footer וריכוך ריצוד */
-footer { visibility: hidden; }
-[data-testid="block-container"]{ will-change: transform; }
+/* footer */
+footer{visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -368,7 +358,7 @@ def append_dataframe_to_gsheet(df: pd.DataFrame, sheet_id: str, worksheet_name: 
     if not df.empty:
         ws.append_rows(df.astype(str).values.tolist(), value_input_option="RAW")
 
-# חדש – כתיבה עם ניסיונות חוזרים + גיבוי לוקאלי
+# כתיבה עם ניסיונות חוזרים + גיבוי לוקאלי
 def _write_results_with_retry(df: pd.DataFrame, retries: int = 3, base_delay: float = 1.5):
     last_err = None
     for attempt in range(retries):
@@ -452,13 +442,17 @@ def _correct_phrase(question_text: str) -> str:
     if ("גבוה" in q) or ("highest" in q.lower()): return "עם הערך הגבוה ביותר"
     return "התשובה הנכונה"
 
-# ========= Small UI helpers =========
+# ========= UI helpers =========
 def _render_progress(current_index: int, total: int, label: str = ""):
-    """Progress מציג כבר בשאלה הראשונה 1/Total (בלי להישאר על 0%)."""
-    col = st.columns([1,6,1])[1]
+    """פס התקדמות יציב – מציג 1/total בהתחלה, עם fallback לגרסאות ישנות ללא text=."""
+    col = st.columns([1,8,1])[1]
     with col:
-        shown = (min(current_index, max(0,total-1)) + 1) / max(1, total)
-        st.progress(shown, text=label or f"{current_index+1}/{total}")
+        pct = (current_index + 1) / max(1, total)
+        try:
+            st.progress(pct, text=label or f"{current_index+1}/{total}")
+        except TypeError:
+            st.progress(pct)
+            st.caption(label or f"{current_index+1}/{total}")
 
 def _render_graph_block(title_html, question_text, row_dict):
     if title_html:
@@ -466,7 +460,6 @@ def _render_graph_block(title_html, question_text, row_dict):
     left, mid, right = st.columns([1,6,1])
     with mid:
         st.markdown(f"<div class='question-text'>{question_text}</div>", unsafe_allow_html=True)
-
     try:
         x, y, colors = _extract_option_values_and_colors(row_dict)
     except Exception as e:
@@ -501,38 +494,19 @@ def _render_graph_block(title_html, question_text, row_dict):
         st.plotly_chart(fig, use_container_width=True,
                         config={"displayModeBar": False, "responsive": True, "staticPlot": True})
 
-# ---------- שורת כפתורים ממורכזת A–E ----------
 def render_choice_buttons(key_prefix: str, on_press, letters=("A","B","C","D","E")):
-    st.markdown("""
-    <style>
-      #choices-radio [role="radiogroup"]{
-        display:flex !important; flex-wrap: nowrap !important; justify-content: center !important;
-        align-items: center !important; gap: var(--choice-gap) !important;
-        overflow-x: auto; padding: var(--choice-paddingY) 2px !important;
-        margin-top: var(--buttons-up) !important;
-      }
-      #choices-radio [role="radiogroup"] > label{
-        display:flex !important; align-items:center; justify-content:center;
-        width: var(--choice-size) !important; height: var(--choice-size) !important;
-        box-sizing: border-box !important; border-radius: 9999px !important;
-        border: 1.5px solid #9ca3af !important; background: #e5e7eb !important;
-        font-weight: 800 !important; font-size: var(--choice-font) !important; color: #111 !important;
-        user-select: none !important; padding: 0 !important; margin: 0 !important;
-      }
-      #choices-radio [aria-checked="true"]{ border-color:#111 !important; background:#d1d5db !important; }
-      #choices-radio [role="radio"] { display:none !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
     outer_cols = st.columns([1,6,1])
     with outer_cols[1]:
         st.markdown('<div id="choices-radio">', unsafe_allow_html=True)
         choice = st.radio(
-            label="בחר/י תשובה", options=list(letters), horizontal=True, index=None,
-            label_visibility="collapsed", key=f"{key_prefix}_radio",
+            label="בחר/י תשובה",
+            options=list(letters),
+            horizontal=True,
+            index=None,
+            label_visibility="collapsed",
+            key=f"{key_prefix}_radio",
         )
         st.markdown('</div>', unsafe_allow_html=True)
-
         state_key = f"{key_prefix}_radio_last"
         prev = st.session_state.get(state_key)
         if choice is not None and choice != prev:
@@ -554,15 +528,12 @@ def _radio_answer_and_timer(timeout_sec, on_timeout, on_press):
     elapsed = time.time() - (st.session_state.t_start or time.time())
     remain = max(0, timeout_sec - int(elapsed))
     st.markdown(f"<div id='fixed-timer'>⏳ זמן שנותר: <b>{remain}</b> שניות</div>", unsafe_allow_html=True)
-
     if elapsed >= timeout_sec and st.session_state.awaiting_response:
         on_timeout(); _safe_rerun(); return
-
     current_index = (st.session_state.practice_idx
                      if st.session_state.page == "practice" else st.session_state.i)
     key_prefix = f"choice_{st.session_state.page}_{current_index}"
     render_choice_buttons(key_prefix, on_press)
-
     if st.session_state.get("awaiting_response", False):
         time.sleep(1); _safe_rerun()
 
@@ -586,13 +557,11 @@ def screen_welcome():
         df = load_data()
     except Exception as e:
         st.error(str(e)); st.stop()
-
     total_rows = len(df)
     if total_rows < 2:
         st.error("בקובץ חייבות להיות לפחות 2 שורות תרגול בתחילתו."); st.stop()
 
     st.markdown('<div id="welcome-wrap">', unsafe_allow_html=True)
-
     st.title("ניסוי בזיכרון חזותי של גרפים 📊")
     st.markdown("""
 **שלום וברוכ/ה הבא/ה לניסוי**
@@ -607,7 +576,6 @@ def screen_welcome():
 
 כדי להתחיל – לחצו על **המשך לתרגול**.
 """)
-
     if st.session_state.timeout_sec != TRIAL_TIMEOUT_DEFAULT or st.session_state.n_trials_req != N_TRIALS_DEFAULT:
         st.info(f"הרצה זו תוגדר עם {st.session_state.n_trials_req} שאלות וזמן {st.session_state.timeout_sec} שניות לשאלה (ע\"י פרמטרי כתובת URL).")
     if total_rows < 2 + st.session_state.n_trials_req:
@@ -620,7 +588,6 @@ def screen_welcome():
         practice_items = df.iloc[:2].to_dict(orient="records")
         pool_df = df.iloc[2: 2 + n_trials_final].copy()
         trials = build_alternating_trials(pool_df, n_trials_final)
-
         st.session_state.df = df
         st.session_state.practice_list = practice_items
         st.session_state.trials = trials
@@ -643,7 +610,6 @@ def _practice_one(idx: int):
         st.session_state.trial_start_iso = pd.Timestamp.now().isoformat(timespec="seconds")
 
     _render_progress(idx, total, label=f"תרגול {idx+1}/{total}")
-
     t = st.session_state.practice_list[idx]
     _render_graph_block("", t["QuestionText"], t)
 
@@ -667,7 +633,6 @@ def _practice_one(idx: int):
             st.session_state.last_feedback_html = (
                 f"<div style='text-align:center; margin:10px 0; font-weight:700;'>✅ צדקת, עמודה <b>{correct_letter}</b> היא {phrase}.</div>"
             )
-            _safe_rerun()
         else:
             st.session_state.awaiting_response = True
             st.session_state.last_feedback_html = (
@@ -695,7 +660,6 @@ def screen_practice():
 def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
-
     ph = st.empty()
     with ph.container():
         st.markdown('<div id="practice-end-wrap">', unsafe_allow_html=True)
@@ -714,7 +678,6 @@ def screen_practice_end():
           .end-actions .stButton>button:hover{ filter:brightness(1.06); }
         </style>
         """, unsafe_allow_html=True)
-
         timeout = st.session_state.get("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
         st.markdown(f"""
         <div class="end-wrap">
@@ -727,14 +690,12 @@ def screen_practice_end():
           </ul>
         </div>
         """, unsafe_allow_html=True)
-
         def start_and_clear():
             ph.empty()
             st.session_state.page = "trial"
             st.session_state.t_start = None
             st.session_state.awaiting_response = False
             st.session_state.last_feedback_html = ""
-
         mid = st.columns([1,6,1])[1]
         with mid:
             st.markdown('<div class="end-actions">', unsafe_allow_html=True)
@@ -791,7 +752,6 @@ def screen_trial():
 def screen_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
-
     st.title("סיום הניסוי")
     st.success("תודה על השתתפותך!")
     df = pd.DataFrame(st.session_state.results)
