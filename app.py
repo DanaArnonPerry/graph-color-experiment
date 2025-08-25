@@ -22,6 +22,218 @@ except ModuleNotFoundError:
 import gspread
 from google.oauth2 import service_account
 
+
+# ========= Page Setup =========
+st.set_page_config(
+    page_title="ניסוי בזיכרון חזותי של גרפים",
+    page_icon="📊",
+    layout="centered",
+    menu_items={'Get Help': None, 'Report a bug': None, 'About': None},
+)
+
+# Hide Streamlit chrome (decoration/header/toolbar)
+st.markdown(
+    """
+<style>
+/* פס הגרדיינט העליון */
+div[data-testid="stDecoration"] { display: none !important; }
+
+/* הכותרת העליונה והטולבר (⋮ / GitHub / ✎ / ⭐ / Share) */
+header[data-testid="stHeader"] { display: none !important; }
+div[data-testid="stToolbar"] { display: none !important; }
+
+/* תאימות ישנה */
+#MainMenu { visibility: hidden !important; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# Fallback קטן אם האלמנטים מוזרקים מחדש בדינמיות
+components.html(
+    """
+<script>
+(function(){
+  const hide = () => {
+    document.querySelectorAll(
+      '[data-testid="stDecoration"], header[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu'
+    ).forEach(el => {
+      el.style.display='none';
+      el.style.visibility='hidden';
+    });
+  };
+  hide();
+  new MutationObserver(hide).observe(document.documentElement,{subtree:true,childList:true});
+})();
+</script>
+""",
+    height=0,
+)
+
+# בסיס עיצובי כללי + RTL
+st.markdown(
+    """
+<style>
+html, body, [class*="css"] {
+  direction: rtl;
+  text-align: right;
+  font-family: "Rubik","Segoe UI","Arial",sans-serif;
+}
+blockquote, pre, code {
+  direction: ltr;
+  text-align: left;
+}
+
+/* אפס מרווחים סביב גרף */
+div[data-testid="stPlotlyChart"], .stPlotlyChart {
+  margin-bottom: 0 !important;
+}
+
+/* קומפקטיות כללית */
+section.main > div.block-container {
+  padding-top: 5px;
+  padding-bottom: 8px;
+  max-height: 100vh;
+}
+
+/* טיימר מקובע למעלה באמצע */
+#fixed-timer {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: #111;
+  color: #fff;
+  padding: 4px 10px;
+  margin: 0;
+  border-radius: 0 0 10px 10px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: .5px;
+}
+
+/* הסתרת footer */
+footer { visibility: hidden; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# Progress bar — צבעים ותאימות
+st.markdown(
+    """
+<style>
+/* צבעים – חדש/ישן */
+div[data-testid="stProgress"] progress,
+div[data-testid="stProgressBar"] progress {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 12px;
+  border: none;
+  background: transparent;
+  accent-color: #000 !important;
+}
+div[data-testid="stProgress"] progress::-webkit-progress-bar,
+div[data-testid="stProgressBar"] progress::-webkit-progress-bar {
+  background-color: #e5e7eb !important;
+  border-radius: 9999px;
+}
+div[data-testid="stProgress"] progress::-webkit-progress-value,
+div[data-testid="stProgressBar"] progress::-webkit-progress-value {
+  background-color: #000 !important;
+  border-radius: 9999px;
+}
+div[data-testid="stProgress"] progress::-moz-progress-bar,
+div[data-testid="stProgressBar"] progress::-moz-progress-bar {
+  background-color: #000 !important;
+  border-radius: 9999px;
+}
+
+/* תאימות ישנה div-based */
+.stProgress > div > div > div { background-color: #e5e7eb !important; }
+.stProgress > div > div > div > div { background-color: #000 !important; }
+
+/* מיקום מתחת לטיימר – ללא margin-top שלילי גדול */
+div[data-testid="stProgress"],
+div[data-testid="stProgressBar"]{
+  position: sticky;
+  top: 42px !important;  /* מתחת לטיימר */
+  z-index: 20;
+  margin-top: 0 !important;      /* תוקן - ללא margin שלילי */
+  margin-bottom: 8px !important;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# משתנים ומחלקות פעילות – גרף, שאלה, כפתורי A–E
+st.markdown(
+    """
+<style>
+:root{
+  /* קומפקטיות אנכית למסכי שאלות */
+  --question-top: -60px;
+  --graph-top: -40px;
+  --buttons-up: -100px;
+
+  /* גדלי בחירות A–E */
+  --choice-size: 130px;
+  --choice-font: 40px;
+  --choice-gap: 22px;
+  --choice-paddingY: 4px;
+
+  /* הזזות למסכי פתיחה/סיום */
+  --welcome-shift: -2rem;
+  --practice-end-shift: -2rem;
+}
+
+/* במובייל – מידות מתונות יותר */
+@media (max-width: 680px){
+  :root{
+    --choice-size: 44px;
+    --choice-font: 16px;
+    --choice-gap: 8px;
+    --question-top: -30px;
+    --graph-top: -20px;
+    --buttons-up: -50px;
+    --welcome-shift: -1rem;
+    --practice-end-shift: -1rem;
+  }
+}
+
+/* הזזת השאלה */
+.question-text{
+  text-align: center !important;
+  margin-top: var(--question-top) !important;
+  margin-bottom: 0 !important;
+  font-weight: 800;
+  font-size: clamp(20px, 2.8vw, 26px);
+  font-family: 'Rubik','Segoe UI',Arial,sans-serif !important;
+}
+
+/* הזזת הגרף */
+div[data-testid="stPlotlyChart"], .stPlotlyChart{
+  margin-top: var(--graph-top) !important;
+}
+
+/* מסכי הטקסט הספציפיים - הזזה למעלה */
+#welcome-wrap{
+  margin-top: var(--welcome-shift) !important;
+}
+#practice-end-wrap{
+  margin-top: var(--practice-end-shift) !important;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# הסרנו את הפונקציה _inject_compact_rules() - כבר לא נחוצה
+
+
 # ========= Parameters =========
 N_TRIALS_DEFAULT = 40  # ← ניתן לשינוי בפרמטר כתובת ?n=
 TRIAL_TIMEOUT_DEFAULT = 30  # ← ניתן לשינוי בפרמטר כתובת ?timeout=
@@ -84,7 +296,7 @@ def _admin_ui_enabled() -> bool:
 
 
 def init_state():
-    ss = st.session_state# ========= Page Setup ========= st.set_page_config( page_title="ניסוי בזיכרון חזותי של גרפים", page_icon="📊", layout="centered", menu_items={'Get Help': None, 'Report a bug': None, 'About': None} ) # Hide Streamlit chrome (decoration/header/toolbar) st.markdown(""" <style> /* פס הגרדיינט העליון */ div[data-testid="stDecoration"] { display: none !important; } /* הכותרת העליונה והטולבר (⋮ / GitHub / ✎ / ⭐ / Share) */ header[data-testid="stHeader"] { display: none !important; } div[data-testid="stToolbar"] { display: none !important; } /* תאימות ישנה */ #MainMenu { visibility: hidden !important; } </style> """, unsafe_allow_html=True) # Fallback קטן אם האלמנטים מוזרקים מחדש בדינמיות components.html(""" <script> (function(){ const hide = () => { document.querySelectorAll( '[data-testid="stDecoration"], header[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu' ).forEach(el => { el.style.display='none'; el.style.visibility='hidden'; }); }; hide(); new MutationObserver(hide).observe(document.documentElement,{subtree:true,childList:true}); })(); </script> """, height=0) # בסיס עיצובי כללי + RTL st.markdown(""" <style> html, body, [class*="css"] { direction: rtl; text-align: right; font-family: "Rubik","Segoe UI","Arial",sans-serif; } blockquote, pre, code { direction: ltr; text-align: left; } /* אפס מרווחים סביב גרף */ div[data-testid="stPlotlyChart"], .stPlotlyChart { margin-bottom: 0 !important; } /* קומפקטיות כללית */ section.main > div.block-container { padding-top: 5px; padding-bottom: 8px; max-height: 100vh; } /* טיימר מקובע למעלה באמצע */ #fixed-timer { position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 9999; background: #111; color: #fff; padding: 4px 10px; margin: 0; border-radius: 0 0 10px 10px; font-weight: 800; font-size: 14px; letter-spacing: .5px; } /* הסתרת footer */ footer { visibility: hidden; } </style> """, unsafe_allow_html=True) # Progress bar — צבעים ותאימות st.markdown(""" <style> /* צבעים – חדש/ישן */ div[data-testid="stProgress"] progress, div[data-testid="stProgressBar"] progress { appearance: none; -webkit-appearance: none; width: 100%; height: 12px; border: none; background: transparent; accent-color: #000 !important; } div[data-testid="stProgress"] progress::-webkit-progress-bar, div[data-testid="stProgressBar"] progress::-webkit-progress-bar { background-color: #e5e7eb !important; border-radius: 9999px; } div[data-testid="stProgress"] progress::-webkit-progress-value, div[data-testid="stProgressBar"] progress::-webkit-progress-value { background-color: #000 !important; border-radius: 9999px; } div[data-testid="stProgress"] progress::-moz-progress-bar, div[data-testid="stProgressBar"] progress::-moz-progress-bar { background-color: #000 !important; border-radius: 9999px; } /* תאימות ישנה div-based */ .stProgress > div > div > div { background-color: #e5e7eb !important; } .stProgress > div > div > div > div { background-color: #000 !important; } /* מיקום מתחת לטיימר – ללא margin-top שלילי גדול */ div[data-testid="stProgress"], div[data-testid="stProgressBar"]{ position: sticky; top: 42px !important; /* מתחת לטיימר */ z-index: 20; margin-top: 0 !important; /* תוקן - ללא margin שלילי */ margin-bottom: 8px !important; } </style> """, unsafe_allow_html=True) # משתנים ומחלקות פעילות – גרף, שאלה, כפתורי A–E st.markdown(""" <style> :root{ /* קומפקטיות אנכית למסכי שאלות */ --question-top: -60px; --graph-top: -40px; --buttons-up: -100px; /* גדלי בחירות A–E */ --choice-size: 130px; --choice-font: 40px; --choice-gap: 22px; --choice-paddingY: 4px; /* הזזות למסכי פתיחה/סיום */ --welcome-shift: -2rem; --practice-end-shift: -2rem; } /* במובייל – מידות מתונות יותר */ @media (max-width: 680px){ :root{ --choice-size: 44px; --choice-font: 16px; --choice-gap: 8px; --question-top: -30px; --graph-top: -20px; --buttons-up: -50px; --welcome-shift: -1rem; --practice-end-shift: -1rem; } } /* הזזת השאלה */ .question-text{ text-align: center !important; margin-top: var(--question-top) !important; margin-bottom: 0 !important; font-weight: 800; font-size: clamp(20px, 2.8vw, 26px); font-family: 'Rubik','Segoe UI',Arial,sans-serif !important; } /* הזזת הגרף */ div[data-testid="stPlotlyChart"], .stPlotlyChart{ margin-top: var(--graph-top) !important; } /* מסכי הטקסט הספציפיים - הזזה למעלה */ #welcome-wrap{ margin-top: var(--welcome-shift) !important; } #practice-end-wrap{ margin-top: var(--practice-end-shift) !important; } </style> """, unsafe_allow_html=True) # הסרנו את הפונקציה _inject_compact_rules() - כבר לא נחוצה
+    ss = st.session_state
     ss.setdefault("page", "welcome")
     ss.setdefault("df", None)
     ss.setdefault("practice_list", [])
@@ -100,7 +312,6 @@ def init_state():
     ss.setdefault("awaiting_response", False)
     ss.setdefault("last_feedback_html", "")
     ss.setdefault("results_saved", False)
-    # חדש – פרמטרים דינמיים מהרצת ה-URL
     ss.setdefault("timeout_sec", TRIAL_TIMEOUT_DEFAULT)
     ss.setdefault("n_trials_req", N_TRIALS_DEFAULT)
     ss.setdefault("trial_start_iso", "")
