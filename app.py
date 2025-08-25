@@ -889,7 +889,7 @@ def _practice_one(idx: int):
 
 def screen_practice():
     _practice_one(st.session_state.practice_idx)
-     
+
 def screen_practice_end():
     st.session_state.awaiting_response = False
     st.session_state.t_start = None
@@ -897,7 +897,6 @@ def screen_practice_end():
     # ניצור placeholder לכל התוכן של המסך הזה
     ph = st.empty()
     with ph.container():
-        # עטיפה עם ID לצורך ה־CSS שמרים את הטקסט
         st.markdown('<div id="practice-end-wrap">', unsafe_allow_html=True)
 
         # CSS ממוקד למסך הזה (כפי שהיה)
@@ -946,8 +945,7 @@ def screen_practice_end():
             st.button(" מתחילים ▶︎ ", key="start_trials_btn", on_click=start_and_clear)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # סגירת ה־DIV של ה־wrap (חשוב!)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)  # ← לסגור את ה־div
 
 
 def screen_trial():
