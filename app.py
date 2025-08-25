@@ -286,6 +286,9 @@ def _first_existing(paths):
 LOGO_PATH = _first_existing(LOGO_CANDIDATES)
 USER_PHOTO_PATH = _first_existing(USER_PHOTO_CANDIDATES)
 
+
+
+
 # ========= Session State =========
 
 def _admin_ui_enabled() -> bool:
